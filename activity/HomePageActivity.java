@@ -29,11 +29,11 @@ import android.widget.Toast;
 
 import com.google.analytics.tracking.android.EasyTracker;
 import com.google.android.gcm.GCMRegistrar;
-import com.vizoal.adapter.HomepageViewPagerAdapter;
-import com.vizoal.common.constant.GCMConstant;
-import com.vizoal.domain.HomepagePlayer;
-import com.vizoal.service.GcmServerUtilities;
-import com.vizoal.util.Util;
+import com.xxx.adapter.HomepageViewPagerAdapter;
+import com.xxx.common.constant.GCMConstant;
+import com.xxx.domain.HomepagePlayer;
+import com.xxx.service.GcmServerUtilities;
+import com.xxx.util.Util;
 
 public class HomePageActivity extends BaseActivity {
 
