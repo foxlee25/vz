@@ -1,0 +1,1353 @@
+package com.vizoal.activity;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.TimeZone;
+
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicHeader;
+import org.apache.http.params.HttpConnectionParams;
+import org.apache.http.protocol.HTTP;
+import org.json.JSONObject;
+
+import android.annotation.SuppressLint;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.Point;
+import android.graphics.Typeface;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Parcelable;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
+import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.util.DisplayMetrics;
+import android.util.Log;
+import android.view.Display;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.View.OnFocusChangeListener;
+import android.view.ViewGroup.LayoutParams;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.AbsListView;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
+import android.widget.SimpleAdapter;
+import android.widget.TextView;
+import android.widget.Toast;
+import android.widget.AbsListView.OnScrollListener;
+
+import com.google.analytics.tracking.android.EasyTracker;
+import com.google.gson.Gson;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.squareup.picasso.Picasso;
+import com.vizoal.adapter.MatchLiveListAdapter;
+import com.vizoal.common.constant.CommonConstant;
+import com.vizoal.common.constant.ServiceEndpointConstant;
+import com.vizoal.domain.Match;
+import com.vizoal.domain.MatchAllData;
+import com.vizoal.domain.MatchBase;
+import com.vizoal.domain.MatchComment;
+import com.vizoal.domain.MatchLive;
+import com.vizoal.domain.MatchPlayer;
+import com.vizoal.domain.MatchPlayersDetail;
+import com.vizoal.domain.PlayerComment;
+import com.vizoal.util.DateUtil;
+import com.vizoal.util.MatchLineupCalculator;
+import com.vizoal.util.Util;
+import com.vizoal.view.PullToRefreshListView;
+import com.vizoal.view.SubstituePlayerItemView;
+import com.vizoal.vo.CommentListResponseVO;
+import com.vizoal.vo.MatchAllDataVO;
+import com.vizoal.vo.MatchCommentListAllResponseVO;
+import com.vizoal.vo.MatchCommentListResponseVO;
+import com.vizoal.vo.MatchDetailVO;
+import com.vizoal.vo.MatchPlayersDetailVO;
+
+public class MatchActivity extends BaseActivity implements OnScrollListener{
+
+	private String TAG = "MatchActivity";
+	private ViewPager mPager; 
+	private List<View> listViews;  
+	private ListView matchLiveListView;
+	private PullToRefreshListView matchCommentListView;
+	private List<MatchLive> matchLiveList;
+	private List<MatchComment> matchCommentList;
+	private RelativeLayout t1, t2, t3, t4;
+	private String matchId = "";
+	private MatchAllData matchAllData;
+	private MatchBase match;
+	private Match matchDetail;
+	private boolean statisticFlag = false;
+	final private Context context = this;
+	
+	private ImageView club_logo1, club_logo2;
+	private TextView club_name1, club_name2, goal_textView, time_textView;
+	private TextView text_possession1, text_possession2,text_shot1, text_shot2,
+					 text_corner1, text_corner2,
+					 text_throws1, text_throws2, text_accurate_pass1, text_accurate_pass2,
+					 text_aerial_won1, text_aerial_won2, text_total_pass1, text_total_pass2,
+					 text_total_tackle1, text_total_tackle2, text_aerial_lost1, text_aerial_lost2;
+					 
+	private RelativeLayout position_layout1,position_layout2,position_layout3,position_layout4,position_layout5,
+	   				       position_layout6,position_layout7,position_layout8,position_layout9,position_layout10,position_layout11;
+	private ImageView team1_player1_image,team1_player2_image,team1_player3_image,team1_player4_image,team1_player5_image,team1_player6_image,
+					  team1_player7_image,team1_player8_image,team1_player9_image,team1_player10_image,team1_player11_image;
+	private TextView team1_player1_text,team1_player2_text,team1_player3_text,team1_player4_text,team1_player5_text,team1_player6_text,
+					  team1_player7_text,team1_player8_text,team1_player9_text,team1_player10_text,team1_player11_text;
+	
+	private RelativeLayout position2_layout1,position2_layout2,position2_layout3,position2_layout4,position2_layout5,
+       					   position2_layout6,position2_layout7,position2_layout8,position2_layout9,position2_layout10,position2_layout11;
+	private ImageView team2_player1_image,team2_player2_image,team2_player3_image,team2_player4_image,team2_player5_image,team2_player6_image,
+			          team2_player7_image,team2_player8_image,team2_player9_image,team2_player10_image,team2_player11_image;
+	private TextView team2_player1_text,team2_player2_text,team2_player3_text,team2_player4_text,team2_player5_text,team2_player6_text,
+				     team2_player7_text,team2_player8_text,team2_player9_text,team2_player10_text,team2_player11_text;
+	
+	private TextView subs_teamName1_text,subs_teamName2_text,teamName1_text,teamName2_text;
+//	private LinearLayout linearLayout1;
+//	private LinearLayout live_score_linearLayout;
+	private LinearLayout mainMatchLayout;
+	private RelativeLayout layout_football_field,subs_layout;
+	private LinearLayout statistics_Layout;
+	
+	private int screenWidth,screenHeight, fieldHeight;
+	private float density;
+	private MatchPlayersDetail matchPlayersDetail;
+	
+	private ProgressBar loadingProgressBar;
+	
+	private boolean loadingProgressBar_flag = false;
+	
+	private int top_comment_id = 0;
+	private int bottom_comment_id = 0;
+	private int live_version = 0;
+	private boolean live_flag = false;
+	private boolean comment_flag = false;
+	
+	private boolean autoUpdateFlag = false;
+	
+	private String savedUserName = "";
+    private SharedPreferences prefs;
+    
+    private SimpleAdapter listItemAdapter;
+    
+    private ArrayList<HashMap<String, Object>> listItem;
+    
+    private int totalCommentCountWhenFirstLoad = 0;
+    private int totalOldCommentCountDisplayed = 0;
+    
+    private RelativeLayout loading, nodata_layout;
+    
+   	private boolean refreshable = true;
+   	
+   	Typeface tf_light;
+    Typeface tf_thin;
+	
+	@SuppressLint("NewApi")
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.match_main);
+		
+		DisplayMetrics dm = new DisplayMetrics();
+		getWindowManager().getDefaultDisplay().getMetrics(dm);
+
+		Intent intent=this.getIntent();
+		
+		matchId = intent.getStringExtra("matchId");
+
+		Log.i(TAG, "===============matchId: "+matchId);
+		Button page_title_btn = (Button) findViewById(R.id.page_title_btn);
+		if (page_title_btn != null) {
+			page_title_btn.setText("League");
+		}
+		
+		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		
+		Display display = getWindowManager().getDefaultDisplay();
+		Point size = new Point();
+		display.getSize(size);
+		screenWidth = size.x;
+		screenHeight = size.y;
+		
+		initTextView();
+		
+		loadMatchDetail();
+	}
+	
+	@Override
+	public void onStart() {
+	    super.onStart();
+	    EasyTracker.getInstance(this).activityStart(this);   
+	}
+
+	@Override
+	public void onStop() {
+	    super.onStop();
+	    EasyTracker.getInstance(this).activityStop(this);   
+	}
+	
+	Handler handler = new Handler();
+    Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+            autoUpdateMatchInfo();
+            handler.postDelayed(this, 5000);  
+        }
+    };
+    
+    boolean resumedFlag = false;
+    
+    @Override
+	public void onResume() {
+		Log.v(TAG, "onResume");
+		if(resumedFlag){
+			handler.postDelayed(runnable, 2000);
+		}
+		super.onResume();
+	}
+	
+	@Override
+	public void onPause(){
+		super.onPause();
+		resumedFlag = true;
+		handler.removeCallbacks(runnable);
+		Log.i(TAG, "onPause...");
+	}
+    
+    
+	
+	private void initTextView() {
+		t1 = (RelativeLayout) findViewById(R.id.tab1);
+		t2 = (RelativeLayout) findViewById(R.id.tab2);
+		t3 = (RelativeLayout) findViewById(R.id.tab3);
+		t4 = (RelativeLayout) findViewById(R.id.tab4);
+
+		t1.setOnClickListener(new MyOnClickListener(0));
+		t2.setOnClickListener(new MyOnClickListener(1));
+		t3.setOnClickListener(new MyOnClickListener(2));
+		t4.setOnClickListener(new MyOnClickListener(3));
+		
+	    club_logo1 = (ImageView)findViewById(R.id.club_logo1);
+	    club_logo2 = (ImageView)findViewById(R.id.club_logo2);
+	  
+	    club_name1 = (TextView)findViewById(R.id.club_name1);
+	    club_name2 = (TextView)findViewById(R.id.club_name2);
+	    goal_textView = (TextView)findViewById(R.id.goal_textView);
+	    time_textView = (TextView)findViewById(R.id.time_textView);
+	    
+	    tf_light = Typeface.createFromAsset(context.getAssets(), "fonts/Roboto-Light.ttf");
+	    tf_thin = Typeface.createFromAsset(context.getAssets(), "fonts/Roboto-Thin.ttf");
+	    goal_textView.setTypeface(tf_light);
+	    time_textView.setTypeface(tf_thin);
+        
+	    mainMatchLayout = (LinearLayout)findViewById(R.id.mainMatchLayout);
+	    loadingProgressBar = (ProgressBar) findViewById(R.id.loadingProgressBar);
+	    
+	}
+	
+	private void initStatisticPage(){
+		text_possession1 = (TextView)findViewById(R.id.text_possession1);
+	    text_possession2 = (TextView)findViewById(R.id.text_possession2);
+	    text_shot1 = (TextView)findViewById(R.id.text_shot1);
+	    text_shot2 = (TextView)findViewById(R.id.text_shot2);
+	    text_corner1 = (TextView)findViewById(R.id.text_corner1);
+		text_corner2 = (TextView)findViewById(R.id.text_corner2);
+		text_throws1 = (TextView)findViewById(R.id.text_throws1);
+	    text_throws2 = (TextView)findViewById(R.id.text_throws2);
+	    text_accurate_pass1 = (TextView)findViewById(R.id.text_accurate_pass1);
+		text_accurate_pass2 = (TextView)findViewById(R.id.text_accurate_pass2);
+		text_aerial_won1 = (TextView)findViewById(R.id.text_aerial_won1);
+		text_aerial_won2 = (TextView)findViewById(R.id.text_aerial_won2);
+		text_total_pass1 = (TextView)findViewById(R.id.text_total_pass1);
+		text_total_pass2 = (TextView)findViewById(R.id.text_total_pass2);
+		text_total_tackle1 = (TextView)findViewById(R.id.text_total_tackle1);
+		text_total_tackle2 = (TextView)findViewById(R.id.text_total_tackle2);
+		text_aerial_lost1 = (TextView)findViewById(R.id.text_aerial_lost1);
+		text_aerial_lost2 = (TextView)findViewById(R.id.text_aerial_lost2);
+		
+		statisticFlag = true;
+	}
+	
+	
+	private  void loadMatchDetail(){
+		mainMatchLayout.setVisibility(View.INVISIBLE);
+		loadingProgressBar.setVisibility(View.VISIBLE);
+		
+		String match_detail_url = ServiceEndpointConstant.VIZOAL_BASE_URL + "/vizoal/services/match/detail/"+matchId;
+		AsyncHttpClient client = new AsyncHttpClient();
+		String timeZone = TimeZone.getDefault().getID();
+//		Log.i(TAG, "timezone: "+timeZone);
+		client.addHeader("timezone", timeZone);
+		client.get(match_detail_url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+//				Log.i(TAG, response);
+				
+				mainMatchLayout.setVisibility(View.VISIBLE);
+				loadingProgressBar.setVisibility(View.INVISIBLE);
+				
+				Gson gson = new Gson();
+				MatchDetailVO matchDetailVO = gson.fromJson(
+						response, MatchDetailVO.class);
+				if (matchDetailVO != null ) {
+					matchDetail = matchDetailVO.getMatch();
+					if(matchDetail!=null){
+						club_name1.setText(matchDetail.getClubName1());
+						club_name2.setText(matchDetail.getClubName2());
+						
+						goal_textView.setText(matchDetail.getTeam1Goal()+" : "+matchDetail.getTeam2Goal());
+						if(matchDetail.isPostponed()){
+							time_textView.setText("POSTPONED");
+						}else if(!matchDetail.isStarted()){
+							String startTime = matchDetail.getStartTime();
+							boolean timeFlag = false;
+							if(startTime!=null){
+								String[] args = startTime.split(" ");
+								if(args!=null && args.length==2){
+									timeFlag = true;
+									time_textView.setText(args[1]);
+								}
+							}
+							if(!timeFlag){
+								time_textView.setText("Not started");
+							}
+						}else{
+							time_textView.setText(matchDetail.getCurrentTime());
+						}
+						
+						String imageUrl = ServiceEndpointConstant.CLUB_FLAG_IMAGE_PRE+"3.0/"+matchDetail.getTeam1FMId()+".png";
+				        Picasso.with(context).load(imageUrl).into(club_logo1);
+				        
+				        String imageUrl2 = ServiceEndpointConstant.CLUB_FLAG_IMAGE_PRE+"3.0/"+matchDetail.getTeam2FMId()+".png";
+				        Picasso.with(context).load(imageUrl2).into(club_logo2);
+				        
+				        club_logo1.setOnClickListener(new OnClickListener() {
+							@Override
+							public void onClick(View arg0) {
+								Intent clubIntent = new Intent(context, ClubProfileActivity.class);
+								clubIntent.putExtra("clubId",""+matchDetail.getTeam1Id());
+								clubIntent.putExtra("clubName",matchDetail.getClubName1());
+					            startActivity(clubIntent);  
+							}
+						});
+				        
+				        club_name1.setOnClickListener(new OnClickListener() {
+							@Override
+							public void onClick(View arg0) {
+								Intent clubIntent = new Intent(context, ClubProfileActivity.class);
+								clubIntent.putExtra("clubId",""+matchDetail.getTeam1Id());
+								clubIntent.putExtra("clubName",matchDetail.getClubName1());
+					            startActivity(clubIntent);  
+							}
+						});
+				        
+				        club_logo2.setOnClickListener(new OnClickListener() {
+							@Override
+							public void onClick(View arg0) {
+								Intent clubIntent = new Intent(context, ClubProfileActivity.class);
+								clubIntent.putExtra("clubId",""+matchDetail.getTeam2Id());
+								clubIntent.putExtra("clubName",matchDetail.getClubName2());
+					            startActivity(clubIntent);  
+							}
+						});
+				        
+				        club_name2.setOnClickListener(new OnClickListener() {
+							@Override
+							public void onClick(View arg0) {
+								Intent clubIntent = new Intent(context, ClubProfileActivity.class);
+								clubIntent.putExtra("clubId",""+matchDetail.getTeam2Id());
+								clubIntent.putExtra("clubName",matchDetail.getClubName2());
+					            startActivity(clubIntent);  
+							}
+						});
+				        
+						initViewPager();
+					}
+				} else {
+					String errorMSG = "Network connection error, please try again later.";
+					Log.e(TAG, errorMSG + " Error: the players from response is empty.");
+					Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT).show();
+				} 
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				String errorMSG = "Network connection error, please try again later.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+						.show();
+			}
+		});
+	}
+
+	private void initViewPager() {
+		mPager = (ViewPager) findViewById(R.id.vPager);
+		listViews = new ArrayList<View>();
+		LayoutInflater mInflater = getLayoutInflater();
+		listViews.add(mInflater.inflate(R.layout.match_live, null));
+		listViews.add(mInflater.inflate(R.layout.match_statistics, null));
+		listViews.add(mInflater.inflate(R.layout.match_lineup, null));
+		listViews.add(mInflater.inflate(R.layout.match_comment, null));
+		
+		mPager.setAdapter(new MyPagerAdapter(listViews));
+		mPager.setCurrentItem(0);
+		mPager.setOffscreenPageLimit(5);
+		mPager.setOnPageChangeListener(new TabPageChangeListener());
+	}
+	
+	private void initLineupPage(){
+		 
+		fieldHeight = (screenWidth * 783) /428;
+		density = getResources().getDisplayMetrics().density;
+		
+		//Team1
+		position_layout1 = (RelativeLayout)findViewById(R.id.position_layout1);
+		position_layout2 = (RelativeLayout)findViewById(R.id.position_layout2);
+		position_layout3 = (RelativeLayout)findViewById(R.id.position_layout3);
+		position_layout4 = (RelativeLayout)findViewById(R.id.position_layout4);
+		position_layout5 = (RelativeLayout)findViewById(R.id.position_layout5);
+		position_layout6 = (RelativeLayout)findViewById(R.id.position_layout6);
+		position_layout7 = (RelativeLayout)findViewById(R.id.position_layout7);
+		position_layout8 = (RelativeLayout)findViewById(R.id.position_layout8);
+		position_layout9 = (RelativeLayout)findViewById(R.id.position_layout9);
+		position_layout10 = (RelativeLayout)findViewById(R.id.position_layout10);
+		position_layout11 = (RelativeLayout)findViewById(R.id.position_layout11);
+		
+		team1_player1_image = (ImageView)findViewById(R.id.team1_player1_image);
+		team1_player2_image = (ImageView)findViewById(R.id.team1_player2_image);
+		team1_player3_image = (ImageView)findViewById(R.id.team1_player3_image);
+		team1_player4_image = (ImageView)findViewById(R.id.team1_player4_image);
+		team1_player5_image = (ImageView)findViewById(R.id.team1_player5_image);
+		team1_player6_image = (ImageView)findViewById(R.id.team1_player6_image);
+		team1_player7_image = (ImageView)findViewById(R.id.team1_player7_image);
+		team1_player8_image = (ImageView)findViewById(R.id.team1_player8_image);
+		team1_player9_image = (ImageView)findViewById(R.id.team1_player9_image);
+		team1_player10_image = (ImageView)findViewById(R.id.team1_player10_image);
+		team1_player11_image = (ImageView)findViewById(R.id.team1_player11_image);
+		
+		team1_player1_text = (TextView)findViewById(R.id.team1_player1_text);
+		team1_player2_text = (TextView)findViewById(R.id.team1_player2_text);
+		team1_player3_text = (TextView)findViewById(R.id.team1_player3_text);
+		team1_player4_text = (TextView)findViewById(R.id.team1_player4_text);
+		team1_player5_text = (TextView)findViewById(R.id.team1_player5_text);
+		team1_player6_text = (TextView)findViewById(R.id.team1_player6_text);
+		team1_player7_text = (TextView)findViewById(R.id.team1_player7_text);
+		team1_player8_text = (TextView)findViewById(R.id.team1_player8_text);
+		team1_player9_text = (TextView)findViewById(R.id.team1_player9_text);
+		team1_player10_text = (TextView)findViewById(R.id.team1_player10_text);
+		team1_player11_text = (TextView)findViewById(R.id.team1_player11_text);
+		
+		//Team2
+		position2_layout1 = (RelativeLayout)findViewById(R.id.position2_layout1);
+		position2_layout2 = (RelativeLayout)findViewById(R.id.position2_layout2);
+		position2_layout3 = (RelativeLayout)findViewById(R.id.position2_layout3);
+		position2_layout4 = (RelativeLayout)findViewById(R.id.position2_layout4);
+		position2_layout5 = (RelativeLayout)findViewById(R.id.position2_layout5);
+		position2_layout6 = (RelativeLayout)findViewById(R.id.position2_layout6);
+		position2_layout7 = (RelativeLayout)findViewById(R.id.position2_layout7);
+		position2_layout8 = (RelativeLayout)findViewById(R.id.position2_layout8);
+		position2_layout9 = (RelativeLayout)findViewById(R.id.position2_layout9);
+		position2_layout10 = (RelativeLayout)findViewById(R.id.position2_layout10);
+		position2_layout11 = (RelativeLayout)findViewById(R.id.position2_layout11);
+		
+		team2_player1_image = (ImageView)findViewById(R.id.team2_player1_image);
+		team2_player2_image = (ImageView)findViewById(R.id.team2_player2_image);
+		team2_player3_image = (ImageView)findViewById(R.id.team2_player3_image);
+		team2_player4_image = (ImageView)findViewById(R.id.team2_player4_image);
+		team2_player5_image = (ImageView)findViewById(R.id.team2_player5_image);
+		team2_player6_image = (ImageView)findViewById(R.id.team2_player6_image);
+		team2_player7_image = (ImageView)findViewById(R.id.team2_player7_image);
+		team2_player8_image = (ImageView)findViewById(R.id.team2_player8_image);
+		team2_player9_image = (ImageView)findViewById(R.id.team2_player9_image);
+		team2_player10_image = (ImageView)findViewById(R.id.team2_player10_image);
+		team2_player11_image = (ImageView)findViewById(R.id.team2_player11_image);
+		
+		team2_player1_text = (TextView)findViewById(R.id.team2_player1_text);
+		team2_player2_text = (TextView)findViewById(R.id.team2_player2_text);
+		team2_player3_text = (TextView)findViewById(R.id.team2_player3_text);
+		team2_player4_text = (TextView)findViewById(R.id.team2_player4_text);
+		team2_player5_text = (TextView)findViewById(R.id.team2_player5_text);
+		team2_player6_text = (TextView)findViewById(R.id.team2_player6_text);
+		team2_player7_text = (TextView)findViewById(R.id.team2_player7_text);
+		team2_player8_text = (TextView)findViewById(R.id.team2_player8_text);
+		team2_player9_text = (TextView)findViewById(R.id.team2_player9_text);
+		team2_player10_text = (TextView)findViewById(R.id.team2_player10_text);
+		team2_player11_text = (TextView)findViewById(R.id.team2_player11_text);
+		
+		//Team name
+		teamName1_text = (TextView)findViewById(R.id.teamName1_text);
+		teamName2_text = (TextView)findViewById(R.id.teamName2_text);
+		subs_teamName1_text = (TextView)findViewById(R.id.subs_teamName1_text);
+		subs_teamName2_text = (TextView)findViewById(R.id.subs_teamName2_text);
+	}
+	
+	public class MyPagerAdapter extends PagerAdapter {
+		public List<View> mListViews;
+
+		public MyPagerAdapter(List<View> mListViews) {
+			this.mListViews = mListViews;
+		}
+
+		@Override
+		public void destroyItem(View arg0, int arg1, Object arg2) {
+			((ViewPager) arg0).removeView(mListViews.get(arg1));
+		}
+		@Override
+		public void finishUpdate(View arg0) {
+		}
+		@Override
+		public int getCount() {
+			return mListViews.size();
+		}
+		public int getItemPosition(Object object) {  
+		    return POSITION_NONE;  
+		} 
+
+		@Override
+		public Object instantiateItem(View viewPager, int pageIndex) {
+			if (pageIndex < 4) {
+				((ViewPager) viewPager).addView(mListViews.get(pageIndex % 4), 0);
+			}
+			if (pageIndex == 0) {
+				if(!autoUpdateFlag){
+					loadingProgressBar_flag = true;
+					comment_flag = false;
+					live_flag = true;
+					
+					if(matchDetail.isStarted()){
+						matchLiveListView = (ListView) findViewById(R.id.match_live_list_view);
+						matchLiveListView.setVisibility(View.VISIBLE);
+//						if(!matchDetail.isCompleted()){
+							handler.postDelayed(runnable, 2000);
+//						}
+					}else{
+						nodata_layout = (RelativeLayout) findViewById(R.id.nodata_layout);
+						nodata_layout.setVisibility(View.VISIBLE);
+						
+						TextView label_schedule = (TextView)findViewById(R.id.label_schedule);
+						TextView label_start_time = (TextView)findViewById(R.id.label_start_time);
+						TextView textview_comment = (TextView)findViewById(R.id.textview_comment);
+						TextView textview_section = (TextView)findViewById(R.id.textview_section);
+						TextView textview_conversion = (TextView)findViewById(R.id.textview_conversion);
+						
+						label_start_time.setText(Util.getDate(matchDetail.getStartTime()));
+						label_schedule.setTypeface(tf_light);
+						label_start_time.setTypeface(tf_light);
+						textview_comment.setTypeface(tf_thin);
+						textview_section.setTypeface(tf_thin);
+						textview_conversion.setTypeface(tf_thin);
+					}
+					autoUpdateMatchInfo();
+					autoUpdateFlag = true;
+				}
+			}
+			
+			if (pageIndex == 1) {
+				statistics_Layout = (LinearLayout)findViewById(R.id.statistics_Layout);
+				statistics_Layout.setVisibility(View.INVISIBLE);
+				if(matchDetail!=null && matchDetail.getPossessionPercentage1()!=null && !"".equals(matchDetail.getPossessionPercentage1())){
+					statistics_Layout.setVisibility(View.VISIBLE);
+					initStatisticPage();
+					filloutStatisticPage();
+				}
+			}
+			
+			if (pageIndex == 2) {
+				layout_football_field = (RelativeLayout)findViewById(R.id.layout_football_field);
+				subs_layout = (RelativeLayout)findViewById(R.id.subs_layout);
+				
+				initLineupPage();
+				String match_lineup_url = ServiceEndpointConstant.VIZOAL_BASE_URL + "/vizoal/services/match/player/"+matchId;
+				AsyncHttpClient client = new AsyncHttpClient();
+				client.get(match_lineup_url, new AsyncHttpResponseHandler() {
+					@Override
+					public void onSuccess(String response) {
+//						Log.i(TAG, response);
+						Gson gson = new Gson();
+						MatchPlayersDetailVO matchPlayersDetailVO = gson.fromJson(
+								response, MatchPlayersDetailVO.class);
+						if (matchPlayersDetailVO != null ) {
+							matchPlayersDetail = matchPlayersDetailVO.getMatchPlayersDetail();
+							if(matchPlayersDetail.getTeam1MatchPlayers()!=null && matchPlayersDetail.getTeam1MatchPlayers().size()>0){
+								layout_football_field.setVisibility(View.VISIBLE);
+								subs_layout.setVisibility(View.VISIBLE);
+								
+								setupFormationPlaceTeam1();
+								setupFormationPlaceTeam2();
+								substituteTeam1();
+								substituteTeam2();
+							}
+						} else {
+							String errorMSG = "Network connection error, please try again later.";
+							Log.e(TAG, errorMSG + " Error: the players from response is empty.");
+							Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT).show();
+						} 
+					}
+
+					@Override
+					public void onFailure(java.lang.Throwable t) {
+						String errorMSG = "Network connection error, please try again later.";
+						Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+						Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+								.show();
+					}
+				});
+			}
+			if(pageIndex == 3){
+			    prefs = context.getSharedPreferences("com.vizoal", Context.MODE_PRIVATE);
+                savedUserName = prefs.getString(CommonConstant.USER_NAME,"");
+                firstTimeLoadMatchComment();
+
+                final EditText edittext = (EditText) findViewById(R.id.match_comment_edit_box);
+                edittext.setOnFocusChangeListener(new OnFocusChangeListener() {
+                    @Override
+                    public void onFocusChange(View v, boolean hasFocus) {
+                        if (hasFocus) {
+                            edittext.setEnabled(false);
+                            AlertDialog.Builder alert = new AlertDialog.Builder(context);
+                            alert.setCancelable(false);
+    
+                            LayoutInflater factory = LayoutInflater.from(context);
+
+                            //text_entry is an Layout XML file containing two text field to display in alert dialog
+                            final View comment_dialog = factory.inflate(R.layout.comment_dialog, null);
+
+                            final EditText usernameInput = (EditText) comment_dialog.findViewById(R.id.username_box);
+                            final EditText commentInput = (EditText) comment_dialog.findViewById(R.id.comment_box);
+
+                            if(savedUserName!=null && !"".equals(savedUserName.trim())){
+                                usernameInput.setText(savedUserName);
+                                commentInput.requestFocus();
+                            }
+                            alert.setIcon(R.drawable.profile_tab_4_blk).setTitle("Post Comment").setView(comment_dialog).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int whichButton) {
+                                    String username = usernameInput.getText().toString();
+                                    String comment = commentInput.getText().toString();
+                                    new PostCommentTask().execute(username,comment,ServiceEndpointConstant.MATCH_COMMENT_ADD_ENDPOINT);
+                                    findViewById(R.id.mainMatchLayout).requestFocus();
+                                    InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                                    imm.hideSoftInputFromWindow(usernameInput.getWindowToken(), 0);
+                                    edittext.setEnabled(true);
+                                }
+                            });
+    
+                            alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int whichButton) {
+                                    // Canceled.
+                                    findViewById(R.id.mainMatchLayout).requestFocus();
+                                    InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                                    imm.hideSoftInputFromWindow(usernameInput.getWindowToken(), 0);
+                                    edittext.setEnabled(true);
+                                }
+                            });
+                            
+                            // Request soft keyboard to show up in the alert dialog
+                            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                            imm.toggleSoftInput(InputMethodManager.SHOW_FORCED,0);
+    
+                            alert.show();
+                        }
+                    }
+                });
+			}
+			return mListViews.get(pageIndex % 4);
+		}
+
+		@Override
+		public boolean isViewFromObject(View arg0, Object arg1) {
+			return arg0 == (arg1);
+		}
+
+		@Override
+		public void restoreState(Parcelable arg0, ClassLoader arg1) {
+		}
+
+		@Override
+		public Parcelable saveState() {
+			return null;
+		}
+
+		@Override
+		public void startUpdate(View arg0) {
+		}
+	}
+	
+private void autoUpdateMatchInfo(){
+    	
+    	String match_url = ServiceEndpointConstant.VIZOAL_BASE_URL + "/vizoal/services/match/liveall?matchId="+matchId+"&live_flag="+live_flag+"&live_version="+live_version+"&comment_flag="+(comment_flag&&!firstTimeLoadComment)+"&current_comment_id="+top_comment_id; 
+//    	Log.i(TAG, match_url);
+    	
+    	AsyncHttpClient client = new AsyncHttpClient();
+    	String timeZone = TimeZone.getDefault().getID();
+    	client.addHeader("timezone", timeZone);
+		client.get(match_url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+//				Log.i(TAG, response);
+				Gson gson = new Gson();
+				MatchAllDataVO matchAllDataVO = gson.fromJson(
+						response, MatchAllDataVO.class);
+				if (matchAllDataVO != null && matchAllDataVO.getMatchAllData() != null) {
+					matchAllData = matchAllDataVO.getMatchAllData();
+					if(matchAllData!=null){
+						match = matchAllData.getMatchBase();
+					}
+					filloutMatchData();
+				}else {
+					String errorMSG = "No data found for this match.";
+					Log.e(TAG, errorMSG + " Error: the players from response is empty.");
+					Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT).show();
+				}
+				if(loadingProgressBar_flag){
+					comment_flag = false;
+					loadingProgressBar_flag = false;
+				}
+				
+				if(comment_pullToRefreshFlag){
+					handler.postDelayed(runnable, 2000);
+					comment_pullToRefreshFlag = false;
+				}
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				if(loadingProgressBar_flag){
+					loadingProgressBar.setVisibility(View.INVISIBLE);
+				}
+				String errorMSG = "Network connection error, please try again later.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+						.show();
+				
+				if(loadingProgressBar_flag){
+					comment_flag = false;
+					loadingProgressBar_flag = false;
+				}
+				
+				if(live_pullToRefreshFlag){
+					handler.postDelayed(runnable, 2000);
+					live_pullToRefreshFlag = false;
+				}
+			}
+		});
+    	
+    }
+		
+	private void filloutMatchData() {
+		if (match!=null) {
+			live_version = match.getVersion();
+			
+			goal_textView.setText(match.getTeam1Goal()+" : "+match.getTeam2Goal());
+			if(match.isPostponed()){
+				time_textView.setText("POSTPONED");
+			}else if(!match.isStarted()){
+				String startTime = match.getStartTime();
+				boolean timeFlag = false;
+				if(startTime!=null){
+					String[] args = startTime.split(" ");
+					if(args!=null && args.length==2){
+						timeFlag = true;
+						time_textView.setText(args[1]);
+					}
+				}
+				if(!timeFlag){
+					time_textView.setText("Not started");
+				}
+			}else{
+				time_textView.setText(match.getCurrentTime());
+			}
+			
+			
+	        if(matchDetail.isStarted()){
+//	        	Log.i(TAG,"filloutMatchLiveData: "+(matchAllData.getMatchLiveList()!=null && matchAllData.getMatchLiveList().size()>0));
+	        	if(matchAllData.getMatchLiveList()!=null && matchAllData.getMatchLiveList().size()>0){
+		        	matchLiveList = matchAllData.getMatchLiveList();
+		        	filloutMatchLiveData();
+		        }
+	        }
+	        
+	        if(matchAllData.getMatchCommentList()!=null && 
+	        		matchAllData.getMatchCommentList().size()>0){
+	        	matchCommentList = matchAllData.getMatchCommentList();
+				top_comment_id = matchCommentList.get(0).getMatchCommentId();
+				listItem.addAll(0, Util.constructMatchCommentList(matchCommentList));
+				matchCommentListView.onRefreshComplete();
+				listItemAdapter.notifyDataSetChanged();
+	        }else{
+	        	if(comment_flag && comment_pullToRefreshFlag){
+		    		matchCommentListView.onRefreshComplete();
+	        	}
+	        }
+		}
+	}
+	
+	boolean live_pullToRefreshFlag = false;
+	
+	private void filloutMatchLiveData(){
+		matchLiveListView.setAdapter(new MatchLiveListAdapter(this, matchLiveList,matchLiveListView));
+		
+		if(live_pullToRefreshFlag){
+    		live_pullToRefreshFlag = false;
+    	}
+	}
+	
+	boolean comment_pullToRefreshFlag = false;
+	boolean firstTimeLoadComment = true;
+	
+	private void firstTimeLoadMatchComment(){
+		matchCommentListView = (PullToRefreshListView) findViewById(R.id.match_comment_list);
+		matchCommentListView.setOnScrollListener(this);
+		loading = (RelativeLayout) findViewById(R.id.loading);
+        
+		String url = ServiceEndpointConstant.MATCH_COMMENT_ALL_ENDPOINT+matchId;
+		AsyncHttpClient client = new AsyncHttpClient();
+		client.get(url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+				Gson gson = new Gson();
+				MatchCommentListAllResponseVO commentRes = gson.fromJson(response,
+						MatchCommentListAllResponseVO.class);
+				if(commentRes!=null && commentRes.getMatchCommentListAll()!=null){
+					if(commentRes.getMatchCommentListAll().getTotalCount()>0){
+						totalCommentCountWhenFirstLoad = commentRes.getMatchCommentListAll().getTotalCount();
+						
+						matchCommentList = commentRes.getMatchCommentListAll().getMatchCommentList();
+						
+						totalOldCommentCountDisplayed = matchCommentList.size();
+
+						listItem = Util.constructMatchCommentList(matchCommentList);
+	    				 
+	    	            listItemAdapter = new SimpleAdapter(context,listItem, 
+	    			            R.layout.player_comment_items,
+	    			            new String[] { "comment_poster_name","comment_content","comment_post_time"}, 
+	    			            new int[] {R.id.comment_poster_name,R.id.comment_content,R.id.comment_post_time}
+	    			        );
+	    			    
+	    			    matchCommentListView.setShowLastUpdatedText(true);
+	    			    matchCommentListView.setLastUpdatedDateFormat(new SimpleDateFormat("yyyy/MM/dd HH:mm:ss"));
+	    				
+	    			    matchCommentListView.setAdapter(listItemAdapter);
+	    		        
+	    			    matchCommentListView.onRefreshComplete();
+	    				
+	    			    matchCommentListView.setOnRefreshListener(new com.vizoal.view.PullToRefreshListView.OnRefreshListener() {
+	    					@Override
+	    					public void onRefresh() {
+	    						handler.removeCallbacks(runnable);
+	    						comment_pullToRefreshFlag = true;
+	    						autoUpdateMatchInfo();
+	    					}
+	    				});
+	    			    
+	    			    top_comment_id = matchCommentList.get(0).getMatchCommentId();
+	    			    bottom_comment_id = matchCommentList.get(matchCommentList.size()-1).getMatchCommentId();
+	    			    
+	    			    if(totalOldCommentCountDisplayed>=totalCommentCountWhenFirstLoad){
+							refreshable = false;
+						}else{
+							refreshable = true;
+						}
+	    			    firstTimeLoadComment = false ; 
+			  }
+			}
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				String errorMSG = "Failed to get club list from server.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+						.show();
+			}
+		});
+	}
+	
+	private void loadOldMatchComment(){
+    	String url = ServiceEndpointConstant.MATCH_OLD_COMMENT_ENDPOINT+matchId+"/"+bottom_comment_id;
+		AsyncHttpClient client = new AsyncHttpClient();
+		client.get(url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+				Gson gson = new Gson();
+				MatchCommentListResponseVO commentRes = gson.fromJson(response,
+						MatchCommentListResponseVO.class);
+				if(commentRes!=null && commentRes.getMatchCommentList().size()>0){
+					int size = commentRes.getMatchCommentList().size();
+					List<MatchComment> commentCommentList = commentRes.getMatchCommentList();
+					bottom_comment_id = commentCommentList.get(size-1).getMatchCommentId();
+					totalOldCommentCountDisplayed = totalOldCommentCountDisplayed + size;
+					
+					//Add the new data to existing list
+					listItem.addAll(Util.constructMatchCommentList(commentRes.getMatchCommentList()));
+					listItemAdapter.notifyDataSetChanged();
+					loading.setVisibility(View.GONE);
+					if(totalOldCommentCountDisplayed>=totalCommentCountWhenFirstLoad){
+						refreshable = false;
+					}else{
+						refreshable = true;
+					}
+				}else{
+					loading.setVisibility(View.GONE);
+				}
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				String errorMSG = "Failed to get club list from server.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+						.show();
+			}
+		});
+    }
+	
+    @Override
+	public void onScroll(AbsListView view, int firstVisibleItem,
+			int visibleItemCount, int totalItemCount) {
+		if ((firstVisibleItem + visibleItemCount == totalItemCount)
+				&& (totalItemCount != 0)) {
+			if (refreshable) {
+				refreshable = false;
+				loading.setVisibility(View.VISIBLE);
+				loadOldMatchComment();
+			}
+		}
+	}
+    
+    @Override
+	public void onScrollStateChanged(AbsListView view, int scrollState) {
+		// TODO Auto-generated method stub
+
+	}
+	
+	private class PostCommentTask extends AsyncTask<String, String, PlayerComment[]> {
+        @Override
+        protected PlayerComment[] doInBackground(String... params) {
+        	sendCommentJson(params[0],params[1],params[2]);
+        	return null;
+        }
+		@Override
+        protected void onPostExecute(PlayerComment[] result) {
+			if(firstTimeLoadComment){
+				firstTimeLoadComment = false;
+				firstTimeLoadMatchComment();
+			}else{
+				autoUpdateMatchInfo();
+			}
+        }
+    }
+	
+	protected void sendCommentJson(final String username, final String comment, final String url) {
+                HttpClient client = new DefaultHttpClient();
+                HttpConnectionParams.setConnectionTimeout(client.getParams(), 10000); //Timeout Limit
+//                HttpResponse response;
+                String postUserName = CommonConstant.USER_NAME_ANOYMOUS;
+                if(username!=null && !"".equals(username.trim())){
+                    postUserName = username;
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putString(CommonConstant.USER_NAME, username);
+                    editor.commit();
+                    savedUserName = username;
+                }
+                
+                JSONObject json = new JSONObject();
+                try {
+                    HttpPost post = new HttpPost(url);
+                    json.put("matchId", ""+matchId);
+                    json.put("userName", postUserName);
+                    json.put("comment", comment);
+                    StringEntity se = new StringEntity( json.toString(),HTTP.UTF_8);  
+                    se.setContentType(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
+                    post.setEntity(se);
+                    client.execute(post);
+                } catch(Exception e) {
+                    e.printStackTrace();
+                }
+    }
+	
+	private void filloutStatisticPage(){
+		    setWidth(matchDetail.getPossessionPercentage1(),matchDetail.getPossessionPercentage2(),
+		    		text_possession1,text_possession2, true);
+		    
+		    setWidth(matchDetail.getTotalShots1(),matchDetail.getTotalShots2(),text_shot1,text_shot2, false);
+		    
+			setWidth(matchDetail.getWonCorners1(),matchDetail.getWonCorners2(),
+					text_corner1,text_corner2, false);
+				    
+		    setWidth(matchDetail.getTotalThrows1(),matchDetail.getTotalThrows2(),
+		    		text_throws1,text_throws2, false);
+		    
+			setWidth(matchDetail.getAccuratePass1(),matchDetail.getAccuratePass2(),
+					text_accurate_pass1,text_accurate_pass2, false);
+			
+			setWidth(matchDetail.getAerialWon1(),matchDetail.getAerialWon2(),
+					text_aerial_won1,text_aerial_won2, false);
+			
+			setWidth(matchDetail.getTotalPass1(),matchDetail.getTotalPass2(),
+					text_total_pass1,text_total_pass2, false);
+			
+			setWidth(matchDetail.getTotalTackle1(),matchDetail.getTotalTackle2(),
+					text_total_tackle1,text_total_tackle2, false);
+			
+			setWidth(matchDetail.getAerialLost1(),matchDetail.getAerialLost2(),
+					text_aerial_lost1,text_aerial_lost2, false);
+	}
+	
+	private void setWidth(String xStr, String yStr, TextView tv1, TextView tv2, boolean percentageFlag){
+		if(xStr!=null && !"".equals(xStr) && yStr!=null && !"".equals(yStr) ){
+			float x,y;
+			if(xStr==null || "".equals(xStr)){
+				x=0;
+				xStr = "0";
+			}else{
+				x = Float.parseFloat(xStr);
+			}
+			if(yStr==null || "".equals(yStr)){
+				y=0;
+				yStr = "0";
+			}else{
+				y = Float.parseFloat(yStr);
+			}
+
+			float total = x+y;
+			if(x==0){
+				tv1.getLayoutParams().width = 0;
+			}else{
+				int z ;
+				if(y==0){
+					z = screenWidth/3;
+				}else{
+					z = (int) (screenWidth/2*(x/total));
+				}
+				tv1.getLayoutParams().width = z;
+			}
+			if(y==0){
+				tv2.getLayoutParams().width = 0;
+			}else{
+				int z;
+				if(x==0){
+					z = screenWidth/3;
+				}else{
+					z = (int) (screenWidth/2*(y/total));
+				}
+				tv2.getLayoutParams().width = z;
+			}
+		}else{
+			if("".equals(xStr) && "".equals(yStr)){
+				xStr = "0";
+			    yStr = "0";
+			    int size = screenWidth/4;
+				tv1.getLayoutParams().width = size;
+				tv2.getLayoutParams().width = size;
+			}else if("".equals(xStr)){
+				xStr = "0";
+				int size = screenWidth/3;
+				tv1.getLayoutParams().width = screenWidth/8;
+				tv2.getLayoutParams().width = size;
+			}else if("".equals(yStr)){
+				yStr = "0";
+				int size = screenWidth/3;
+				tv1.getLayoutParams().width = size;
+				tv2.getLayoutParams().width = screenWidth/8;
+			}
+		}
+		if(percentageFlag){
+			tv1.getLayoutParams().width = (tv1.getLayoutParams().width+screenWidth/12);
+			tv2.getLayoutParams().width = (tv2.getLayoutParams().width+screenWidth/12);
+			tv1.setText(xStr+"%");
+			tv2.setText(yStr+"%");
+		}else{
+			tv1.setText(xStr);
+			tv2.setText(yStr);
+		}
+		
+	}
+	
+	private void setupFormationPlaceTeam1(){
+		List<MatchPlayer> team1_matchPlayerList = matchPlayersDetail.getTeam1MatchPlayers();
+		if(team1_matchPlayerList!=null && team1_matchPlayerList.size()>0){
+			for(MatchPlayer matchPlayer: team1_matchPlayerList){
+				double[] xy = MatchLineupCalculator.calculateFormationPosition(fieldHeight, screenWidth, matchPlayer.getFormationPlace(), matchDetail.getTeam1Formation(), density);
+				if(xy!=null){
+					setTeam1PlayerFormation(matchPlayer,xy);
+	 			}
+			}
+	  }
+	}
+	
+	private void setupFormationPlaceTeam2(){
+		List<MatchPlayer> team2_matchPlayerList = matchPlayersDetail.getTeam2MatchPlayers();
+		if(team2_matchPlayerList!=null && team2_matchPlayerList.size()>0){
+			for(MatchPlayer matchPlayer: team2_matchPlayerList){
+				double[] xy = MatchLineupCalculator.calculateFormationPosition2(fieldHeight, screenWidth, matchPlayer.getFormationPlace(), matchDetail.getTeam2Formation(), density);
+				if(xy!=null){
+					setTeam2PlayerFormation(matchPlayer,xy);
+				}
+		}
+	  }
+	}
+	
+	
+	
+	private void substituteTeam1(){
+		
+        LinearLayout team1_sub_layout=(LinearLayout)findViewById(R.id.team1_sub_layout);
+        
+		final List<MatchPlayer> team1_sub_matchPlayerList = matchPlayersDetail.getTeam1SubstMatchPlayers();
+		if(team1_sub_matchPlayerList!=null && team1_sub_matchPlayerList.size()>0){
+			for(final MatchPlayer mplayer : team1_sub_matchPlayerList){
+//				View view = getLayoutInflater().inflate(R.id.match_live_list_view, null);
+				SubstituePlayerItemView substituePlayerItemView = new SubstituePlayerItemView(context);
+				ImageView player_thumb_image = substituePlayerItemView.getSubs_player_thumb_image();
+				TextView player_name_textView = substituePlayerItemView.getSubs_player_name_textView();
+				
+				String imageUrl = ServiceEndpointConstant.PLAYER_IMAGE_PRE+density+"/"+mplayer.getFmid()+".png";
+			        
+			     Picasso.with(context)
+			        .load(imageUrl)
+			        .placeholder(R.drawable.player_placeholder)
+			        .into(player_thumb_image);
+			        
+			     player_name_textView.setText(mplayer.getPlayerName());
+			     team1_sub_layout.addView(substituePlayerItemView);
+			     substituePlayerItemView.setOnClickListener(new OnClickListener() {
+						@Override
+						public void onClick(View arg0) {
+							Intent profileIntent = new Intent(context, ProfileActivity.class);
+							profileIntent.putExtra("playerId",""+mplayer.getPlayerId());  
+				            startActivity(profileIntent);   
+						}
+					});
+			}
+		}
+	}
+	
+	private void substituteTeam2(){
+        LinearLayout team2_sub_layout=(LinearLayout)findViewById(R.id.team2_sub_layout);
+        
+		final List<MatchPlayer> team2_sub_matchPlayerList = matchPlayersDetail.getTeam2SubstMatchPlayers();
+		if(team2_sub_matchPlayerList!=null && team2_sub_matchPlayerList.size()>0){
+			for(final MatchPlayer mplayer : team2_sub_matchPlayerList){
+//				View view = getLayoutInflater().inflate(R.id.match_live_list_view, null);
+				SubstituePlayerItemView substituePlayerItemView = new SubstituePlayerItemView(context);
+				ImageView player_thumb_image = substituePlayerItemView.getSubs_player_thumb_image();
+				TextView player_name_textView = substituePlayerItemView.getSubs_player_name_textView();
+				
+				String imageUrl = ServiceEndpointConstant.PLAYER_IMAGE_PRE+density+"/"+mplayer.getFmid()+".png";
+			        
+			     Picasso.with(context)
+			        .load(imageUrl)
+			        .placeholder(R.drawable.player_placeholder)
+			        .into(player_thumb_image);
+			     if(mplayer.getPlayerName()!=null){
+			    	 player_name_textView.setText(mplayer.getPlayerName().trim());
+			     }
+			     team2_sub_layout.addView(substituePlayerItemView);
+			     substituePlayerItemView.setOnClickListener(new OnClickListener() {
+						@Override
+						public void onClick(View arg0) {
+							Intent profileIntent = new Intent(context, ProfileActivity.class);
+							profileIntent.putExtra("playerId",""+mplayer.getPlayerId());  
+				            startActivity(profileIntent);   
+						}
+					});
+			}
+		}
+	}
+	public class TabPageChangeListener implements OnPageChangeListener {
+		RelativeLayout tab1 = (RelativeLayout) findViewById(R.id.tab1);
+		RelativeLayout tab2 = (RelativeLayout) findViewById(R.id.tab2);
+		RelativeLayout tab3 = (RelativeLayout) findViewById(R.id.tab3);
+		RelativeLayout tab4 = (RelativeLayout) findViewById(R.id.tab4);
+		
+		public void onPageSelected(int arg0) {
+			switch (arg0) {
+			case 0:
+				tab1.setBackgroundColor(Color.parseColor("#27ae60"));
+				tab2.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				tab3.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				tab4.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				
+				live_flag = true;
+				comment_flag = false;
+				
+				break;
+			case 1:
+				tab1.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				tab2.setBackgroundColor(Color.parseColor("#27ae60"));
+				tab3.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				tab4.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				break;
+			case 2:
+				//Set team name
+				if(match!=null){
+					teamName1_text.setText(match.getClubName1() + " "+  match.getTeam1Formation());
+					teamName2_text.setText( match.getTeam2Formation() + " "+  match.getClubName2());
+					subs_teamName1_text.setText("Substitutes "+match.getClubName1());
+					subs_teamName2_text.setText("Substitutes "+match.getClubName2());
+				}
+				tab1.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				tab2.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				tab3.setBackgroundColor(Color.parseColor("#27ae60"));
+				tab4.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				break;
+			case 3:
+				
+				live_flag = false;
+				comment_flag = true;
+
+				tab1.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				tab2.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				tab3.setBackgroundColor(Color.parseColor("#1f7e5c"));
+				tab4.setBackgroundColor(Color.parseColor("#27ae60"));
+				break;
+			}
+		}
+		public void onPageScrolled(int arg0, float arg1, int arg2) {
+		}
+		public void onPageScrollStateChanged(int arg0) {
+		}
+	}
+	
+	public class MyOnClickListener implements View.OnClickListener {
+		private int index = 0;
+
+		public MyOnClickListener(int i) {
+			index = i;
+		}
+		public void onClick(View v) {
+			mPager.setCurrentItem(index);
+		}
+	};
+	
+	private void setTeam2PlayerFormation(MatchPlayer matchPlayer, double[] xy){
+		switch (matchPlayer.getFormationPlace()) {
+		case 1:
+			setFormation(team2_player1_text, team2_player1_image, position2_layout1,xy, matchPlayer);
+			break;
+		case 2:
+			setFormation(team2_player2_text, team2_player2_image, position2_layout2,xy, matchPlayer);
+			break;
+		case 3:
+			setFormation(team2_player3_text, team2_player3_image, position2_layout3,xy, matchPlayer);
+			break;
+		case 4:
+			setFormation(team2_player4_text, team2_player4_image, position2_layout4,xy, matchPlayer);
+			break;
+		case 5:
+			setFormation(team2_player5_text, team2_player5_image, position2_layout5,xy, matchPlayer);
+			break;
+		case 6:
+			setFormation(team2_player6_text, team2_player6_image, position2_layout6,xy, matchPlayer);
+			break;
+		case 7:
+			setFormation(team2_player7_text, team2_player7_image, position2_layout7,xy, matchPlayer);
+			break;
+		case 8:
+			setFormation(team2_player8_text, team2_player8_image, position2_layout8,xy, matchPlayer);
+			break;
+		case 9:
+			setFormation(team2_player9_text, team2_player9_image, position2_layout9,xy, matchPlayer);
+			break;
+		case 10:
+			setFormation(team2_player10_text, team2_player10_image, position2_layout10,xy, matchPlayer);
+			break;
+		case 11:
+			setFormation(team2_player11_text, team2_player11_image, position2_layout11,xy, matchPlayer);
+			break;
+		}
+	}
+	
+	private void setTeam1PlayerFormation(MatchPlayer matchPlayer, double[] xy){
+		switch (matchPlayer.getFormationPlace()) {
+		case 1:
+			setFormation(team1_player1_text, team1_player1_image, position_layout1,xy, matchPlayer);
+			break;
+		case 2:
+			setFormation(team1_player2_text, team1_player2_image, position_layout2,xy, matchPlayer);
+			break;
+		case 3:
+			setFormation(team1_player3_text, team1_player3_image, position_layout3,xy, matchPlayer);
+			break;
+		case 4:
+			setFormation(team1_player4_text, team1_player4_image, position_layout4,xy, matchPlayer);
+			break;
+		case 5:
+			setFormation(team1_player5_text, team1_player5_image, position_layout5,xy, matchPlayer);
+			break;
+		case 6:
+			setFormation(team1_player6_text, team1_player6_image, position_layout6,xy, matchPlayer);
+			break;
+		case 7:
+			setFormation(team1_player7_text, team1_player7_image, position_layout7,xy, matchPlayer);
+			break;
+		case 8:
+			setFormation(team1_player8_text, team1_player8_image, position_layout8,xy, matchPlayer);
+			break;
+		case 9:
+			setFormation(team1_player9_text, team1_player9_image, position_layout9,xy, matchPlayer);
+			break;
+		case 10:
+			setFormation(team1_player10_text, team1_player10_image, position_layout10,xy, matchPlayer);
+			break;
+		case 11:
+			setFormation(team1_player11_text, team1_player11_image, position_layout11,xy, matchPlayer);
+			break;
+		}
+	}
+	
+	private void setFormation(TextView playerTextView, ImageView playerImageView, RelativeLayout layout, double[] xy, final MatchPlayer matchPlayer){
+		playerImageView.setVisibility(View.VISIBLE);
+		LayoutParams layout_params = layout.getLayoutParams();
+		layout_params.width = (int)xy[0];
+		layout_params.height = (int)xy[1];
+		layout.setLayoutParams(layout_params);
+		
+		if(matchPlayer.getPlayerName()!=null && !"".equals(matchPlayer.getPlayerName())){
+			playerTextView.setText(matchPlayer.getPlayerName().trim());
+			playerTextView.setOnClickListener(new OnClickListener() {
+				@Override
+				public void onClick(View arg0) {
+					Intent profileIntent = new Intent(context, ProfileActivity.class);
+					profileIntent.putExtra("playerId",""+matchPlayer.getPlayerId());  
+		            startActivity(profileIntent);   
+				}
+			});
+		}
+		
+		if(matchPlayer.getFmid()!=null){
+			String playerPic_URL = ServiceEndpointConstant.PLAYER_IMAGE_PRE+"1.5/"+matchPlayer.getFmid()+".png";
+    		Picasso.with(this)
+			       .load(playerPic_URL)
+			       .placeholder(R.drawable.player_placeholder)
+			       .into(playerImageView);
+    		
+    		playerImageView.setOnClickListener(new OnClickListener() {
+				@Override
+				public void onClick(View arg0) {
+					Intent profileIntent = new Intent(context, ProfileActivity.class);
+					profileIntent.putExtra("playerId",""+matchPlayer.getPlayerId());  
+		            startActivity(profileIntent);   
+				}
+			});
+		}
+	}
+	
+}

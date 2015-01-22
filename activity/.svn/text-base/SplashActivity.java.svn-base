@@ -1,0 +1,275 @@
+package com.vizoal.activity;
+
+import java.util.Date;
+import java.util.List;
+
+import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Bundle;
+import android.util.DisplayMetrics;
+import android.util.Log;
+import android.widget.Toast;
+
+import com.google.gson.Gson;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.squareup.picasso.Picasso;
+import com.vizoal.common.constant.ServiceEndpointConstant;
+import com.vizoal.domain.HomepagePlayer;
+import com.vizoal.domain.VersionVO;
+import com.vizoal.util.Util;
+import com.vizoal.vo.VersionResponseVO;
+
+public class SplashActivity extends Activity {
+
+	private String TAG = "SplashActivity";
+	
+	public static String homepagePlayerKey = "homepage_player_key";
+	
+	public static String favTeamFlagKey = "fav_team_flag_key";
+	
+	public static String favTeamKey = "fav_team_flag";
+	
+//	public static String favTeamFirstTime = "fav_team_flag";
+	
+	private SharedPreferences preferences;
+	
+	final Context context = this;
+	
+	Long startTime,endTime;
+	
+	String homepageImageResolution;
+	
+	VersionVO versionVO ;
+	
+	float screenWidth ;
+    float screenHeight;
+	
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		startTime = new Date().getTime();
+		super.onCreate(savedInstanceState);
+		
+		Intent intent=this.getIntent();
+		
+		String fromNotification = intent.getStringExtra("fromNotification");
+		if("yes".equals(fromNotification)){
+			String matchId = intent.getStringExtra("matchId");
+			Intent notificationIntent = new Intent(context, HomePageActivity.class);
+			notificationIntent.putExtra("fromNotification","yes"); 
+			notificationIntent.putExtra("matchId",matchId); 
+			notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP); //Clean the activity stack
+	        startActivity(notificationIntent);
+	        finish();
+	        return;
+		} 
+		
+		setContentView(R.layout.preloadhomepage);
+		
+		DisplayMetrics dm = new DisplayMetrics();
+        this.getWindowManager().getDefaultDisplay().getMetrics(dm);
+        screenWidth = dm.widthPixels;
+        screenHeight = dm.heightPixels;
+        
+        
+        preferences = this.getSharedPreferences("com.vizoal", Context.MODE_PRIVATE);
+        
+        if(!hasShortcut()){
+        	addShortcut(this);
+        	setShortCutFlag();
+        }
+        
+        homepageImageResolution = Util.getHomepageImageResolution(screenWidth);
+        
+        getHomePageData();
+	}
+	
+	public void getHomePageData() {
+		String url = ServiceEndpointConstant.VIZOAL_BASE_URL +"/vizoal/services/homepageNversion";
+		AsyncHttpClient client = new AsyncHttpClient();
+		client.get(url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+				Gson gson = new Gson();
+				VersionResponseVO versionResVO = gson.fromJson(
+						response, VersionResponseVO.class);
+				if (versionResVO != null && versionResVO.getVersionVO()!=null) {
+					versionVO = versionResVO.getVersionVO();
+					if(versionVO.getHomepagePlayerList()!=null && versionVO.getHomepagePlayerList().size()>0){
+						
+					List<HomepagePlayer> playerList = versionVO.getHomepagePlayerList();
+					StringBuilder sb = new StringBuilder("");
+					for(int i=0;i<playerList.size();i++){
+						HomepagePlayer player = playerList.get(i);
+						if(i==0){
+							String baseImageURL = ServiceEndpointConstant.VIZOAL_BASE_URL +"/vizoal/image/android/homepage/hiRez/";
+							 //Load image from server
+							 Picasso.with(context)
+						        .load(baseImageURL + player.getImage());
+							 
+							sb.append(player.getName()).append(",").append(player.getImage()).append(",").append(player.getPlayerId());
+						}else{
+							sb.append(";");
+							sb.append(player.getName()).append(",").append(player.getImage()).append(",").append(player.getPlayerId());
+						}
+					}
+					SharedPreferences.Editor editor = preferences.edit();
+					editor.putString(homepagePlayerKey, sb.toString());
+					editor.commit();
+					
+					endTime = new Date().getTime();
+					
+					new Thread(new Runnable(){
+						@Override
+						public void run() {
+							long timecost = endTime-startTime;
+							if(timecost<2000){
+								try {
+									Thread.currentThread().sleep(2000-timecost);
+								} catch (InterruptedException e) {
+									e.printStackTrace();
+								}
+							}
+							startSplashActivity();
+							finish();
+						}
+					}).start();
+				} else {
+					String errorMSG = "Failed to get home page players.";
+					Log.e(TAG,errorMSG + " Error: the home page list from response is empty.");
+					Toast.makeText(getBaseContext(), errorMSG,
+							Toast.LENGTH_SHORT).show();
+				}
+				}
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				String errorMSG = "Failed to get home page players from server.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+						.show();
+			}
+		});
+	}
+	
+	private void startSplashActivity(){
+		PackageInfo pInfo = null;
+		try {
+			pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+		
+			float version = Float.parseFloat(pInfo.versionName);
+			float minVersion = Float.parseFloat(versionVO.getMinVersion());
+			float maxVersion = Float.parseFloat(versionVO.getMaxVersion());
+			
+			if(version != maxVersion){
+				if(version>=minVersion){
+					Intent intent  = new Intent(context, VersionUpdateActivity.class);
+					intent.putExtra("flag", "0");
+					intent.putExtra("newVersion", versionVO.getMaxVersion());
+					intent.putExtra("contentMessage", versionVO.getNormalMessage());
+					intent.putExtra("redirectURL", versionVO.getRedirectURL());
+					startActivity(intent);
+					finish();
+				}else{
+					Intent intent  = new Intent(context, VersionUpdateActivity.class);
+					intent.putExtra("flag", "1");
+					intent.putExtra("newVersion", versionVO.getMaxVersion());
+					intent.putExtra("contentMessage", versionVO.getForceMessage());
+					intent.putExtra("redirectURL", versionVO.getRedirectURL());
+					startActivity(intent);
+					finish();
+				}
+			}else{
+				String favTeam = preferences.getString(SplashActivity.favTeamKey,"");
+		 		
+		 		Intent intent = null;
+		 		if(favTeam==null || "".equals(favTeam)){
+		 			intent = new Intent(context, FavTeamActivity.class);
+		 		}else{
+		 			intent = new Intent(context, HomePageActivity.class);
+		 		}
+		 		intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP); //Clean the activity stack
+		        startActivity(intent);
+			}
+		} catch (NameNotFoundException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+		  if (requestCode == 1) {
+		     if(resultCode == RESULT_OK){      
+		         String result=data.getStringExtra("result");
+		         if("cancel".equals(result)){
+		        	 String favTeam = preferences.getString(SplashActivity.favTeamKey,"");
+				 		
+				 		Intent intent = null;
+				 		if(favTeam==null || "".equals(favTeam)){
+				 			intent = new Intent(context, FavTeamActivity.class);
+				 		}else{
+				 			intent = new Intent(context, HomePageActivity.class);
+				 		}
+				 		intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP); //Clean the activity stack
+				         startActivity(intent);
+		         }else if("update".equals(result)){
+		        	 finish();
+		         }
+		     }
+		     if (resultCode == RESULT_CANCELED) {    
+		         //Write your code if there's no result
+		    	 finish();
+		     }
+		  }
+		}
+	
+	public void addShortcut(Context context) {
+		 
+        String ACTION_INSTALL_SHORTCUT = "com.android.launcher.action.INSTALL_SHORTCUT";
+        Intent intent = new Intent(context, SplashActivity.class);
+        intent.setAction(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_LAUNCHER);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+
+        Intent shortcutIntent = new Intent(ACTION_INSTALL_SHORTCUT);
+//        shortcutIntent.setAction(Intent.ACTION_MAIN);
+        shortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_NAME, context.getResources()
+                .getString(R.string.app_name)); 
+        shortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, intent);
+        shortcutIntent.putExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE,
+                        Intent.ShortcutIconResource.fromContext(context,
+                                        R.drawable.launch_logo));
+        shortcutIntent.putExtra("duplicate", false);
+        context.sendBroadcast(shortcutIntent);
+	}
+	
+	String shortCutFlagKey = "shortCutFlag";
+	
+	private boolean hasShortcut()  
+	{  
+		 String shortCutFlag = preferences.getString("shortCutFlagKey","");
+		 if(shortCutFlag!=null && "yes".equals(shortCutFlag)){
+			 return true;
+		 }else{
+			 return false;
+		 }
+	}
+	
+	private void setShortCutFlag(){
+		SharedPreferences.Editor editor = preferences.edit();
+		editor.putString("shortCutFlagKey", "yes");
+		editor.commit();
+	}
+	
+}

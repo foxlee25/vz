@@ -1,0 +1,425 @@
+package com.vizoal.activity;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TimeZone;
+
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.os.Bundle;
+import android.os.Parcelable;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
+import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.support.v7.app.ActionBar;
+import android.util.DisplayMetrics;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.analytics.tracking.android.EasyTracker;
+import com.google.gson.Gson;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.squareup.picasso.Picasso;
+import com.vizoal.adapter.ClubMatchListAdapter;
+import com.vizoal.adapter.MatchListAdapter;
+import com.vizoal.adapter.PlayerListAdapter;
+import com.vizoal.common.constant.ServiceEndpointConstant;
+import com.vizoal.domain.Club;
+import com.vizoal.domain.Match;
+import com.vizoal.domain.Player;
+import com.vizoal.util.Util;
+import com.vizoal.vo.ClubVO;
+import com.vizoal.vo.MatchListResponseVO;
+
+public class ClubProfileActivity extends BaseActivity{
+
+	private String TAG = "ClubProfileActivity";
+	private ViewPager mPager; 
+	private List<View> listViews;  
+	private LinearLayout t1, t2; 
+	
+	private TextView club_name, league_name;
+	private ImageView club_logo, league_logo;
+	
+	private LinearLayout tab1, tab2, tab3;
+	
+	private TextView tab1_textView, tab2_textView;
+	
+	final private Context context = this;
+	private float density;
+	private String clubId = "";
+	
+	private Club club;
+	private List<Match> matchList;
+   	
+   	private ProgressBar loadingProgressBar;
+   	
+   	private Typeface typeface_regular,typeface_light;
+   	
+   	private LinearLayout mainProfileLayout;
+   	private ListView listView;
+   	
+   	private ClubMatchListAdapter listAdapter;
+   	
+    private TextView label_rank,label_played,label_win,label_draw,label_loss,label_goals_for,label_goals_against,label_goals_difference,label_points;
+    
+    private TextView text_rank,text_played,text_win,text_draw,text_loss,text_goals_for,text_goals_against,text_goals_difference,text_points;
+   	
+    @Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		
+		setContentView(R.layout.club_profile);
+		Intent intent=this.getIntent();
+		
+		// Set up the action bar
+//    	setActionBar();
+
+		//Get the player id from previous activity
+		clubId=intent.getStringExtra("clubId");
+        
+        DisplayMetrics dm = new DisplayMetrics();
+		getWindowManager().getDefaultDisplay().getMetrics(dm);
+		density = dm.density;
+		density = Util.normalizeDensity(density);
+		
+		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		
+		typeface_regular = Typeface.createFromAsset(context.getAssets(), "fonts/HelveticaNeue.ttf");
+		typeface_light = Typeface.createFromAsset(context.getAssets(), "fonts/HelveticaNeueLight.ttf");
+		
+		ActionBar ab = getSupportActionBar();
+		ab.setDisplayShowTitleEnabled(false);
+        ab.setDisplayShowTitleEnabled(true);
+        
+        String match_detail_url = ServiceEndpointConstant.CLUB_BY_CLUB_ID + clubId;
+		AsyncHttpClient client = new AsyncHttpClient();
+		String timeZone = TimeZone.getDefault().getID();
+		
+		mainProfileLayout = (LinearLayout) findViewById(R.id.mainProfileLayout);
+		mainProfileLayout.setVisibility(View.GONE);
+		
+		loadingProgressBar = (ProgressBar) findViewById(R.id.loadingProgressBar);
+		loadingProgressBar.setVisibility(View.VISIBLE);
+		
+		tab1_textView = (TextView) findViewById(R.id.tab1_textView);
+		tab2_textView = (TextView) findViewById(R.id.tab2_textView);
+		
+		tab1 = (LinearLayout) findViewById(R.id.tab1);
+		tab2 = (LinearLayout) findViewById(R.id.tab2);
+		tab3 = (LinearLayout) findViewById(R.id.tab3);
+		
+		tab1_textView.setTypeface(typeface_regular);
+		tab2_textView.setTypeface(typeface_regular);
+		
+		client.addHeader("timezone", timeZone);
+		client.get(match_detail_url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+//				Log.i(TAG, response);
+				
+				loadingProgressBar.setVisibility(View.INVISIBLE);
+				mainProfileLayout.setVisibility(View.VISIBLE);
+				
+				Gson gson = new Gson();
+				ClubVO clubVO = gson.fromJson(response, ClubVO.class);
+				if(clubVO!=null){
+					club = clubVO.getClub();
+					filloutClubData();
+					InitTextView();
+					InitViewPager();
+				}
+//				initViewPager();
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				String errorMSG = "Network connection error, please try again later.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+						.show();
+			}
+		});
+	}
+    
+    @Override
+	public void onStart() {
+	    super.onStart();
+	    EasyTracker.getInstance(this).activityStart(this);   
+	}
+
+	@Override
+	public void onStop() {
+	    super.onStop();
+	    EasyTracker.getInstance(this).activityStop(this);   
+	}
+ 
+    
+    protected void onActivityResult(int requestCode, int resultCode, Intent data)
+	{
+	}
+    
+    private void filloutClubData(){
+    	if(club!=null){
+    		club_name = (TextView)findViewById(R.id.club_name);
+    		league_name = (TextView)findViewById(R.id.league_name);
+    		
+    		club_logo = (ImageView)findViewById(R.id.club_logo);
+    		league_logo = (ImageView)findViewById(R.id.league_logo);
+    		
+    		club_name.setTypeface(typeface_light);
+    		league_name.setTypeface(typeface_light);
+    		
+    		club_name.setText(club.getName());
+    		league_name.setText(club.getLeagueName());
+    		
+    		String leaguePic_URL = ServiceEndpointConstant.LEAGUE_IMAGE_PRE + club.getLeagueFMID()+".png";
+    		Picasso.with(context)
+		       .load(leaguePic_URL)
+		       .into(league_logo); 
+    		
+    		String clubPic_URL = ServiceEndpointConstant.CLUB_FLAG_IMAGE_PRE+density+"/"+club.getFmId()+".png";
+    		Picasso.with(context)
+		       .load(clubPic_URL)
+		       .into(club_logo);
+    	}
+    }
+    
+  
+
+    private void InitTextView() {
+		t1 = (LinearLayout) findViewById(R.id.tab1);
+		t2 = (LinearLayout) findViewById(R.id.tab2);
+
+		t1.setOnClickListener(new MyOnClickListener(0));
+		t2.setOnClickListener(new MyOnClickListener(1));
+	}
+
+	private void InitViewPager() {
+		mPager = (ViewPager) findViewById(R.id.club_viewer_pager);
+		listViews = new ArrayList<View>();
+		LayoutInflater mInflater = getLayoutInflater();
+		listViews.add(mInflater.inflate(R.layout.club_player_list, null));
+		listViews.add(mInflater.inflate(R.layout.club_match_list, null));
+		listViews.add(mInflater.inflate(R.layout.club_statistics, null));
+		mPager.setAdapter(new MyPagerAdapter(listViews));
+		mPager.setCurrentItem(0);
+		mPager.setOnPageChangeListener(new TabPageChangeListener());
+	}
+
+	public class MyPagerAdapter extends PagerAdapter {
+		public List<View> mListViews;
+
+		public MyPagerAdapter(List<View> mListViews) {
+			this.mListViews = mListViews;
+		}
+
+		@Override
+		public void destroyItem(View arg0, int arg1, Object arg2) {
+			((ViewPager) arg0).removeView(mListViews.get(arg1));
+		}
+		@Override
+		public void finishUpdate(View arg0) {
+		}
+		@Override
+		public int getCount() {
+			return mListViews.size();
+		}
+		public int getItemPosition(Object object) {  
+		    return POSITION_NONE;  
+		} 
+
+		@Override
+		public Object instantiateItem(View viewPager, int pageIndex) {
+			if (pageIndex < 3) {
+				((ViewPager) viewPager).addView(mListViews.get(pageIndex % 3), 0);
+			}
+			if (pageIndex == 0) {
+				if(club.getPlayerList()!=null && club.getPlayerList().size()>0){
+					ListView listView = (ListView) findViewById(R.id.ListView01);
+					PlayerListAdapter adapter=new PlayerListAdapter(ClubProfileActivity.this, club.getPlayerList(), listView, 1, density);
+					listView.setAdapter(adapter);
+					listView.setOnItemClickListener(new OnItemClickListener() {
+						@Override
+						public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+								long arg3) {
+							Intent intent = new Intent(arg0.getContext(),
+									ProfileActivity.class);
+							Player innerPlayer = club.getPlayerList().get(arg2);
+							if(innerPlayer!=null){
+								intent.putExtra("playerId",""+innerPlayer.getPlayerId());  
+								intent.putExtra("nationality_fmid",""+innerPlayer.getNationDisplay_fmid());  
+							}
+							startActivity(intent);
+
+						}
+					});
+				}
+			}
+			if (pageIndex == 1) {
+				listView = (ListView)findViewById(R.id.match_list_view);
+				
+				String url = ServiceEndpointConstant.MATCH_LIST_BY_CLUBID_ENDPOINT +clubId;
+				String timeZone = TimeZone.getDefault().getID();
+				AsyncHttpClient client = new AsyncHttpClient();
+				client.addHeader("timezone", timeZone);
+				client.get(url, new AsyncHttpResponseHandler() {
+					@Override
+					public void onSuccess(String response) {
+						loadingProgressBar.setVisibility(View.INVISIBLE);
+						Gson gson = new Gson();
+						MatchListResponseVO matchListResponseVO = gson.fromJson(
+								response, MatchListResponseVO.class);
+						if (matchListResponseVO != null && matchListResponseVO.getMatchList() != null
+								&& matchListResponseVO.getMatchList().size() != 0) {
+							matchList = matchListResponseVO.getMatchList();
+							listAdapter = new ClubMatchListAdapter(ClubProfileActivity.this, matchList,listView);
+							listView.setAdapter(listAdapter);
+							listView.setOnItemClickListener(new OnItemClickListener() {
+								@Override
+								public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+										long arg3) {
+									Intent intent = new Intent(arg0.getContext(),
+											MatchActivity.class);
+									Match innerMatch = matchList.get(arg2);
+									if(innerMatch!=null){
+										intent.putExtra("matchId",""+innerMatch.getMatchId());  
+									}
+									startActivity(intent);
+								}
+							});
+						}
+					}
+
+					@Override
+					public void onFailure(java.lang.Throwable t) {
+						loadingProgressBar.setVisibility(View.INVISIBLE);
+						String errorMSG = "Failed to get players from server.";
+						Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+					}
+				});
+			}
+			
+			if (pageIndex == 2) {
+				initClubStats();
+			}
+			return mListViews.get(pageIndex % 3);
+		}
+
+		@Override
+		public boolean isViewFromObject(View arg0, Object arg1) {
+			return arg0 == (arg1);
+		}
+
+		@Override
+		public void restoreState(Parcelable arg0, ClassLoader arg1) {
+		}
+
+		@Override
+		public Parcelable saveState() {
+			return null;
+		}
+
+		@Override
+		public void startUpdate(View arg0) {
+		}
+	}
+
+	public class MyOnClickListener implements View.OnClickListener {
+		private int index = 0;
+
+		public MyOnClickListener(int i) {
+			index = i;
+		}
+		public void onClick(View v) {
+			mPager.setCurrentItem(index);
+		}
+	};
+	
+	public class TabPageChangeListener implements OnPageChangeListener {
+		
+		public void onPageSelected(int arg0) {
+			switch (arg0) {
+			case 0:
+				tab1.setBackgroundColor(Color.parseColor("#5673c1"));
+				tab2.setBackgroundColor(Color.parseColor("#435fab"));
+				tab3.setBackgroundColor(Color.parseColor("#435fab"));
+				break;
+			case 1:
+				tab2.setBackgroundColor(Color.parseColor("#5673c1"));
+				tab1.setBackgroundColor(Color.parseColor("#435fab"));
+				tab3.setBackgroundColor(Color.parseColor("#435fab"));
+				break;
+			case 2:
+				tab3.setBackgroundColor(Color.parseColor("#5673c1"));
+				tab2.setBackgroundColor(Color.parseColor("#435fab"));
+				tab1.setBackgroundColor(Color.parseColor("#435fab"));
+				break;
+			}
+		}
+		public void onPageScrolled(int arg0, float arg1, int arg2) {
+		}
+		public void onPageScrollStateChanged(int arg0) {
+		}
+	}
+	
+	private void initClubStats(){
+//	  label_rank,label_played,label_win,label_draw,label_loss,label_goals_for,label_goals_against,label_goals_different,label_points;
+	    
+//	    private TextView text_rank,text_played,text_win,text_draw,text_loss,text_goals_for,text_goals_against,text_goals_different,text_points;
+		label_rank = (TextView)findViewById(R.id.label_rank);
+		label_played = (TextView)findViewById(R.id.label_played);
+		label_win = (TextView)findViewById(R.id.label_win);
+		label_draw = (TextView)findViewById(R.id.label_draw);
+		label_loss = (TextView)findViewById(R.id.label_loss);
+		label_goals_for = (TextView)findViewById(R.id.label_goals_for);
+		label_goals_against = (TextView)findViewById(R.id.label_goals_against);
+		label_goals_difference = (TextView)findViewById(R.id.label_goals_difference);
+		label_points = (TextView)findViewById(R.id.label_points);
+		
+		label_rank.setTypeface(typeface_light);
+		label_played.setTypeface(typeface_light);
+		label_win.setTypeface(typeface_light);
+		label_draw.setTypeface(typeface_light);
+		label_loss.setTypeface(typeface_light);
+		label_goals_for.setTypeface(typeface_light);
+		label_goals_against.setTypeface(typeface_light);
+		label_goals_difference.setTypeface(typeface_light);
+		label_points.setTypeface(typeface_light);
+		
+		text_rank = (TextView)findViewById(R.id.text_rank);
+		text_played = (TextView)findViewById(R.id.text_played);
+		text_win = (TextView)findViewById(R.id.text_win);
+		text_draw = (TextView)findViewById(R.id.text_draw);
+		text_loss = (TextView)findViewById(R.id.text_loss);
+		text_goals_for = (TextView)findViewById(R.id.text_goals_for);
+		text_goals_against = (TextView)findViewById(R.id.text_goals_against);
+		text_goals_difference = (TextView)findViewById(R.id.text_goals_difference);
+		text_points = (TextView)findViewById(R.id.text_points);
+		
+		label_rank.setTypeface(typeface_light);
+		label_played.setTypeface(typeface_light);
+		label_win.setTypeface(typeface_light);
+		label_draw.setTypeface(typeface_light);
+		label_loss.setTypeface(typeface_light);
+		label_goals_for.setTypeface(typeface_light);
+		label_goals_against.setTypeface(typeface_light);
+		label_goals_difference.setTypeface(typeface_light);
+		label_points.setTypeface(typeface_light);
+	   	
+	}
+
+}
+

@@ -1,0 +1,186 @@
+package com.vizoal.activity;
+
+import java.util.List;
+
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.Bundle;
+import android.os.Handler;
+import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.Toast;
+
+import com.google.analytics.tracking.android.EasyTracker;
+import com.google.gson.Gson;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.vizoal.adapter.LeagueListAdapter;
+import com.vizoal.common.constant.CommonConstant;
+import com.vizoal.common.constant.ServiceEndpointConstant;
+import com.vizoal.domain.League;
+import com.vizoal.vo.LeagueListResponseVO;
+
+public class TopLeagueListActivity extends BaseActivity {
+
+	final Handler mHandler = new Handler();
+	
+	private String TAG = "TopLeagueListActivity";
+	
+	private ProgressBar loadingProgressBar;
+	
+	private LeagueListResponseVO res;
+	
+	private List<League> leagueList;
+	
+	final Context context = this;
+	
+	private SharedPreferences preferences;
+	
+//	public static int[] league_logo_array = {R.drawable.barclays_premier_league,R.drawable.bundesliga,R.drawable.france_ligue_1, R.drawable.liga_bbva, R.drawable.italy_serie_a};
+//	
+//	public static String[] league_name_array = {"Premier League", "Bundesliga", "Ligue 1", "Primera División", "Serie A"};
+//	
+//	public static String[] league_info_array = {"England", "Germany", "France", "Spain", "Italy" };
+//	
+//	public static String[] league_id_array = {"11", "17", "21", "19", "15" };
+
+	/** Called when the activity is first created. */
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		
+		Intent intent=this.getIntent();
+		String fromNotification = intent.getStringExtra("fromNotification");
+		if("yes".equals(fromNotification)){
+			fakeLoadingHomePage = true;
+			String matchId = intent.getStringExtra("matchId");
+			Intent notificationIntent = new Intent(context, MatchActivity.class);
+			notificationIntent.putExtra("matchId",matchId); 
+//			notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP); //Clean the activity stack
+	        startActivity(notificationIntent);
+//	        finish();
+		}else{
+			loadActualPage();
+		}
+	}
+	
+	boolean fakeLoadingHomePage = false;
+	
+	@Override
+	public void onResume() {
+		Log.v(TAG, "onResume");
+		if(fakeLoadingHomePage){
+			fakeLoadingHomePage = false;
+			loadActualPage();
+		}
+		super.onResume();
+	}
+	
+	private void loadActualPage(){
+		setContentView(R.layout.top_league_list);
+
+		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		
+		preferences = this.getSharedPreferences("com.vizoal", Context.MODE_PRIVATE);
+		
+		loadingProgressBar = (ProgressBar) findViewById(R.id.loadingProgressBar);
+
+        loadingProgressBar.setVisibility(View.VISIBLE);
+        
+		String url = ServiceEndpointConstant.TOP_LEAGUE_LIST_ENDPOINT;
+		AsyncHttpClient client = new AsyncHttpClient();
+		client.get(url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+				loadingProgressBar.setVisibility(View.INVISIBLE);
+				Gson gson = new Gson();
+				res = gson.fromJson(
+						response, LeagueListResponseVO.class);
+				if(res!=null && res.getLeagueList()!=null){
+					filloutData();
+				}
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				loadingProgressBar.setVisibility(View.INVISIBLE);
+				String errorMSG = "Failed to get league info.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+						.show();
+			}
+		});
+	}
+	
+	@Override
+	public void onStart() {
+	    super.onStart();
+	    EasyTracker.getInstance(this).activityStart(this);   
+	}
+
+	@Override
+	public void onStop() {
+	    super.onStop();
+	    EasyTracker.getInstance(this).activityStop(this);   
+	}
+
+	private void filloutData() {
+		
+		    leagueList = res.getLeagueList();
+		    
+		    StringBuffer leagueIds = new StringBuffer("");
+		    StringBuffer leagueNames = new StringBuffer("");
+		    StringBuffer leagueFMIDs = new StringBuffer("");
+		    StringBuffer leagueCurrentRounds = new StringBuffer("");
+		    StringBuffer leagueMaxRounds = new StringBuffer("");
+		    
+		    for(int i=0;i<leagueList.size();i++){
+		    	League league = leagueList.get(i);
+		    	if(i==0){
+		    		leagueIds.append(league.getLeagueId());
+		    		leagueNames.append(league.getName());
+		    		leagueFMIDs.append(league.getFmId());
+		    		leagueMaxRounds.append(league.getMaxRound());
+		    		leagueCurrentRounds.append(league.getCurrentRound());
+		    	}else{
+		    		leagueIds.append(",").append(league.getLeagueId());
+		    		leagueNames.append(",").append(league.getName());
+		    		leagueFMIDs.append(",").append(league.getFmId());
+		    		leagueMaxRounds.append(",").append(league.getMaxRound());
+		    		leagueCurrentRounds.append(",").append(league.getCurrentRound());
+		    	}
+		    }
+		    SharedPreferences.Editor editor = preferences.edit();
+			editor.putString(CommonConstant.KEY_TOP_LEAGUE_IDS, leagueIds.toString());
+			editor.putString(CommonConstant.KEY_TOP_LEAGUE_NAMES, leagueNames.toString());
+			editor.putString(CommonConstant.KEY_TOP_LEAGUE_FMIDS, leagueFMIDs.toString());
+			editor.putString(CommonConstant.KEY_TOP_LEAGUE_MAXROUND, leagueMaxRounds.toString());
+			editor.putString(CommonConstant.KEY_TOP_LEAGUE_CURRENTROUND, leagueCurrentRounds.toString());
+			
+			editor.commit();
+			
+			ListView listView = (ListView) findViewById(R.id.league_list_view);
+
+			LeagueListAdapter leagueListAdapter = new LeagueListAdapter(this, leagueList , listView, 0);
+			listView.setAdapter(leagueListAdapter);
+			
+			listView.setOnItemClickListener(new OnItemClickListener() {
+				@Override
+				public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+						long arg3) {
+					League league = leagueList.get(arg2);
+					Intent intent = new Intent(arg0.getContext(), ClubActivity.class);
+					intent.putExtra("leagueId",""+league.getLeagueId());  
+					intent.putExtra("leagueName",league.getName());
+					intent.putExtra("currentRound",""+league.getCurrentRound());
+					intent.putExtra("maxRound",""+league.getMaxRound());
+					intent.putExtra("leagueIndex","0");
+					startActivity(intent);
+				}
+			});
+	}
+}

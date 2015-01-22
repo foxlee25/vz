@@ -1,0 +1,105 @@
+//package com.vizoal.activity;
+//
+//import android.app.Activity;
+//import android.content.SharedPreferences;
+//import android.os.Bundle;
+//import android.view.View;
+//import android.view.View.OnClickListener;
+//import android.widget.Button;
+//import android.widget.TextView;
+//
+//import com.facebook.Session;
+//import com.vizoal.common.constant.TwitterConst;
+//import com.vizoal.domain.ClientUser;
+//import com.vizoal.service.FacebookUserDBHander;
+//import com.vizoal.service.TwitterUserDBHander;
+//import com.vizoal.service.UserDBHander;
+//
+//public class SettingActivity extends Activity {
+//	
+//	static Session session = null;
+//	
+//	static SharedPreferences mSharedPreferences;
+//	
+//	UserDBHander dbHander = new UserDBHander(SettingActivity.this);
+//	
+//	FacebookUserDBHander facebookDBHandler = new FacebookUserDBHander(SettingActivity.this);
+//	
+//	TwitterUserDBHander twitterDBHandler = new TwitterUserDBHander(SettingActivity.this);
+//	
+//	@Override
+//	public void onCreate(Bundle savedInstanceState) {
+//		super.onCreate(savedInstanceState);
+//		// Set View to register.xml
+//		setContentView(R.layout.settings);
+//
+//		final Button facebookBtn = (Button) findViewById(R.id.btnFacebookConnect);
+//		final TextView facebookText2 = (TextView) findViewById(R.id.facebookText2);
+//
+//		final Button twitterBtn = (Button)findViewById(R.id.btnTwitterConnect);
+//		final TextView twitterText2 = (TextView) findViewById(R.id.twitterText2);
+//		
+//		Button page_title_btn = (Button)findViewById(R.id.page_title_btn);
+//		if(page_title_btn!=null){
+//			page_title_btn.setText("Setting");
+//		}
+//		
+//		ClientUser clientUser = dbHander.findUser();
+//		String facebookUserName = null;
+//		String twitterUserName = null;
+//		if(clientUser!=null){
+//			facebookUserName = facebookDBHandler.findFacebookName(clientUser.getVizoal_user_id());
+//			twitterUserName = twitterDBHandler.findTwitterName(clientUser.getVizoal_user_id());
+//			System.out.println("facebookUserName: "+facebookUserName);
+//			System.out.println("twitterUserName: "+twitterUserName);
+//		}
+//		
+//		session = Session.getActiveSession();
+//        if (!session.isClosed()) {
+//            facebookBtn.setText("Disconnect");
+//            if(facebookUserName!=null){
+//            	facebookText2.setText(facebookUserName);
+//            }
+//            facebookBtn.setOnClickListener(new OnClickListener() {
+//    			@Override
+//    			public void onClick(View v) {
+//    				session.closeAndClearTokenInformation();
+//    				facebookBtn.setText("Connect");
+//    			}
+//    		});
+//        }else{
+//        	facebookBtn.setText("Connect");
+//        }
+//        
+//      //Twitter
+//      mSharedPreferences = getSharedPreferences(TwitterConst.PREFERENCE_NAME, MODE_PRIVATE);
+//      System.out.println("Twitter isConnected(): "+isConnected());
+//	  if(isConnected()){
+//		  twitterBtn.setText("Disconnect");
+//		  if(twitterUserName!=null){
+//			  twitterText2.setText(twitterUserName);
+//		  }
+//		  twitterBtn.setOnClickListener(new OnClickListener() {
+//  			@Override
+//  			public void onClick(View v) {
+//  				disconnectTwitter();
+//  				twitterBtn.setText("Connect");
+//  			}
+//  		});
+//	  }else{
+//		  twitterBtn.setText("Connect");
+//	  }
+//		 
+//	}
+//	
+//	private boolean isConnected() {
+//			return mSharedPreferences.getString(TwitterConst.PREF_KEY_TOKEN, null) != null;
+//	}
+//	
+//	private void disconnectTwitter() {
+//		SharedPreferences.Editor editor = mSharedPreferences.edit();
+//		editor.remove(TwitterConst.PREF_KEY_TOKEN);
+//		editor.remove(TwitterConst.PREF_KEY_SECRET);
+//		editor.commit();
+//	}
+//}

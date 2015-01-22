@@ -1,0 +1,171 @@
+package com.vizoal.activity;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+
+import org.json.JSONException;
+
+import android.app.SearchManager;
+import android.content.ContentProvider;
+import android.content.ContentValues;
+import android.content.UriMatcher;
+import android.database.Cursor;
+import android.database.MatrixCursor;
+import android.net.Uri;
+import android.os.Handler;
+import android.provider.BaseColumns;
+
+import com.google.gson.Gson;
+import com.vizoal.common.constant.ServiceEndpointConstant;
+import com.vizoal.domain.Player;
+import com.vizoal.domain.SearchItem;
+import com.vizoal.util.HttpConnectionCallback;
+import com.vizoal.util.HttpConnectionUtil;
+import com.vizoal.util.HttpConnectionUtil.HttpMethod;
+import com.vizoal.vo.PlayerListResponseVO;
+import com.vizoal.vo.SearchItemListResponseVO;
+
+public class SearchContentProvider extends ContentProvider {
+	public static final String AUTHORITY = "com.vizoal.activity.SearchContentProvider";
+//	public static final Uri CONTENT_URI = Uri.parse("content://" + AUTHORITY
+//			+ "/suggestion");
+
+	// UriMatcher constant for search suggestions
+	private static final int SEARCH_SUGGEST = 1;
+
+	private static final UriMatcher uriMatcher;
+
+	private static final String[] SEARCH_SUGGEST_COLUMNS = { BaseColumns._ID,
+			SearchManager.SUGGEST_COLUMN_TEXT_1,
+			SearchManager.SUGGEST_COLUMN_TEXT_2,
+			SearchManager.SUGGEST_COLUMN_ICON_1,
+			SearchManager.SUGGEST_COLUMN_INTENT_DATA_ID};
+	private MatrixCursor asyncCursor;
+
+	static {
+		uriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+		uriMatcher.addURI(AUTHORITY, SearchManager.SUGGEST_URI_PATH_QUERY,
+				SEARCH_SUGGEST);
+		uriMatcher.addURI(AUTHORITY, SearchManager.SUGGEST_URI_PATH_QUERY
+				+ "/*", SEARCH_SUGGEST);
+	}
+
+	@Override
+	public int delete(Uri uri, String arg1, String[] arg2) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public String getType(Uri uri) {
+		switch (uriMatcher.match(uri)) {
+		case SEARCH_SUGGEST:
+			return SearchManager.SUGGEST_MIME_TYPE;
+		default:
+			throw new IllegalArgumentException("Unknown URL " + uri);
+		}
+	}
+
+	@Override
+	public Uri insert(Uri uri, ContentValues arg1) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public boolean onCreate() {
+		asyncCursor = new MatrixCursor(SEARCH_SUGGEST_COLUMNS, 3);
+		return true;
+	}
+
+	@Override
+	public Cursor query(Uri uri, String[] projection, String selection,
+			String[] selectionArgs, String sortOrder) {
+		// Use the UriMatcher to see what kind of query we have
+		System.out.println("uriMatcher.match(uri):"+uriMatcher.match(uri));
+		switch (uriMatcher.match(uri)) {
+		case SEARCH_SUGGEST:
+			String query = selectionArgs!=null?selectionArgs[0]:"";
+			asyncCursor = null;
+			System.out.println("query:"+query);
+			if(query.length()>0){
+				performSearch(query);
+				try {
+					updateHTTP();
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
+			}
+			return asyncCursor;
+		default:
+			throw new IllegalArgumentException("Unknown Uri: " + uri);
+		}
+	}
+	
+	BlockingQueue<MatrixCursor> queue = new ArrayBlockingQueue<MatrixCursor>(1);
+	
+	public void performSearch(String query){
+		
+		String url = ServiceEndpointConstant.SUGGESTION_ENDPOINT+query.trim();
+		HttpConnectionUtil.asyncConnect(url, HttpMethod.GET,
+				new HttpConnectionCallback() {
+					@Override
+					public void execute(String response) {
+//						System.out.println("response: " + response);
+						Gson gson = new Gson();
+						res = gson.fromJson(
+								response, SearchItemListResponseVO.class);
+						mHandler.post(mUpdateResults);
+					}
+		});
+	}
+	
+	final Handler mHandler = new Handler();
+	SearchItemListResponseVO res = null;
+	
+	final Runnable mUpdateResults = new Runnable() {
+        public void run() {
+        	filloutData();
+        }
+    };
+    
+    private void filloutData() {
+    	// Creates a new cursor when we get a HTTP response returns
+		MatrixCursor nCursor = new MatrixCursor(SEARCH_SUGGEST_COLUMNS, 10);
+		if (res != null && res.getSearchList()!=null) {
+			List<SearchItem> searchList = res.getSearchList();
+			for(SearchItem searchItem : searchList){
+				if("player".equalsIgnoreCase(searchItem.getType())){
+					nCursor.addRow(new String[] { ""+searchItem.getPlayerId(),
+							searchItem.getPlayerName(), searchItem.getCountryName()+" I "+searchItem.getClubName(), 
+							""+R.drawable.player_placeholder,"player_"+searchItem.getPlayerId() });
+				}else if("club".equalsIgnoreCase(searchItem.getType())){
+					nCursor.addRow(new String[] { ""+searchItem.getClubId(),
+							searchItem.getClubName(), searchItem.getLeagueName()+" I "+searchItem.getCountryName(), 
+							""+R.drawable.club_placeholder,"club_"+searchItem.getClubId()+"_"+searchItem.getClubName() });
+				}
+				
+			}
+    	}
+		try {
+			queue.put(nCursor);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+    }
+    
+	private void updateHTTP() throws JSONException {
+		try {
+			asyncCursor = queue.take();
+			System.out.println("asyncCursor = queue.take() called...");
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
+		}
+	}
+
+	@Override
+	public int update(Uri uri, ContentValues arg1, String arg2, String[] arg3) {
+		throw new UnsupportedOperationException();
+	}
+}
+

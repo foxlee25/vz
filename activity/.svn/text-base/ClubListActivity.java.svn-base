@@ -1,0 +1,94 @@
+package com.vizoal.activity;
+
+import java.util.List;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.util.DisplayMetrics;
+import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
+import android.widget.ListView;
+import android.widget.Toast;
+
+import com.google.gson.Gson;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.vizoal.adapter.ClubListAdapter;
+import com.vizoal.common.constant.ServiceEndpointConstant;
+import com.vizoal.domain.Club;
+import com.vizoal.vo.ClubListResponseVO;
+
+public class ClubListActivity extends BaseActivity {
+	
+	private String TAG = "ClubListActivity";
+
+	private ClubListResponseVO res = null;
+	
+	private String leagueId = "";
+	
+	/** Called when the activity is first created. */
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.club_list);
+
+		DisplayMetrics dm = new DisplayMetrics();
+		getWindowManager().getDefaultDisplay().getMetrics(dm);
+
+		Intent intent=this.getIntent();
+		
+		leagueId = intent.getStringExtra("leagueId");
+
+		Button page_title_btn = (Button) findViewById(R.id.page_title_btn);
+		if (page_title_btn != null) {
+			page_title_btn.setText("Club List");
+		}
+
+		String url = ServiceEndpointConstant.CLUB_LIST_BY_LEAGUE_ID+leagueId;
+		AsyncHttpClient client = new AsyncHttpClient();
+		client.get(url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+				Gson gson = new Gson();
+				res = gson.fromJson(
+						response, ClubListResponseVO.class);
+				filloutData();
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				String errorMSG = "Failed to get club list from server.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+						.show();
+			}
+		});
+	}
+
+	private void filloutData() {
+		if (res != null && res.getClubList()!=null) {
+			List<Club> clubList = res.getClubList();
+
+			ListView list = (ListView) findViewById(R.id.club_list_view);
+
+			ClubListAdapter adapter=new ClubListAdapter(this, clubList, list);
+			list.setAdapter(adapter);
+
+			list.setOnItemClickListener(new OnItemClickListener() {
+				@Override
+				public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+						long arg3) {
+					Intent intent = new Intent(arg0.getContext(),
+							ClubPlayerListActivity.class);
+					Club innerClub = res.getClubList().get(arg2);
+					if(innerClub!=null){
+						intent.putExtra("clubId",""+innerClub.getClubId());  
+					}
+					startActivity(intent);
+				}
+			});
+		}
+	}
+}

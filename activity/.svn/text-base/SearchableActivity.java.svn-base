@@ -1,0 +1,237 @@
+package com.vizoal.activity;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import android.app.SearchManager;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.AbsListView;
+import android.widget.AbsListView.OnScrollListener;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ListView;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.analytics.tracking.android.EasyTracker;
+import com.google.gson.Gson;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.vizoal.adapter.SearchAdapter;
+import com.vizoal.common.constant.ServiceEndpointConstant;
+import com.vizoal.domain.SearchItem;
+import com.vizoal.vo.SearchItemListAllResponseVO;
+
+public class SearchableActivity extends BaseActivity implements OnScrollListener{
+
+	private String TAG = "SearchableActivity";
+	private float density;
+    
+	private List<SearchItem> searchList;
+	private List<SearchItem> additionalSearchList;
+	
+	private SearchAdapter adapter;
+	
+	private RelativeLayout loading;
+	private TextView query_text_view;
+	private boolean refreshable;
+	
+	private int totalCount = 0;
+	private int pageLimit = 15;
+	private int offset = 0;
+	
+	private String query = "";
+	
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+	    setContentView(R.layout.search_result_list);
+
+	    density = getResources().getDisplayMetrics().density;
+
+	    loading = (RelativeLayout) findViewById(R.id.loading);
+	    
+	    query_text_view = (TextView) findViewById(R.id.query_text_view);
+	    
+	    // Get the intent, verify the action and get the query
+	    Intent intent = getIntent();
+	    handleIntent(intent);
+    }
+	
+	@Override
+	public void onStart() {
+	    super.onStart();
+	    EasyTracker.getInstance(this).activityStart(this);   
+	}
+
+	@Override
+	public void onStop() {
+	    super.onStop();
+	    EasyTracker.getInstance(this).activityStop(this);   
+	}
+	
+	@Override
+    protected void onNewIntent(Intent intent) {
+        // Because this activity has set launchMode="singleTop", the system calls this method
+        // to deliver the intent if this activity is currently the foreground activity when
+        // invoked again (when the user executes a search from this activity, we don't create
+        // a new instance of this activity, so the system delivers the search intent here)
+        handleIntent(intent);
+    }
+    
+    private void handleIntent(Intent newIntent) {
+    	if (Intent.ACTION_SEARCH.equals(newIntent.getAction())) {
+	        query = newIntent.getStringExtra(SearchManager.QUERY);
+	        System.out.println("==========="+query); 
+	        
+	        firstTimeLoad = true;
+	        
+	        loadSearchResult();
+//	        String url = ServiceEndpointConstant.SEARCH_ENDPOINT+query;
+//			AsyncHttpClient client = new AsyncHttpClient();
+//			client.get(url, new AsyncHttpResponseHandler() {
+//				@Override
+//				public void onSuccess(String response) {
+//					Gson gson = new Gson();
+//					res = gson.fromJson(
+//							response, SearchItemListResponseVO.class);
+//					filloutData();
+//				}
+//
+//				@Override
+//				public void onFailure(java.lang.Throwable t) {
+//					String errorMSG = "Failed to search from server.";
+//					Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+//					Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+//							.show();
+//				}
+//			});
+//			
+	    }else if(Intent.ACTION_VIEW.equals(newIntent.getAction())){ 
+	    	Uri uri = newIntent.getData();
+	    	String var = uri.getLastPathSegment();
+			
+			if(var!=null && !"".equals(var)){
+				String[] args= var.split("_");
+				if("player".equals(args[0])){
+					Intent profileIntent = new Intent(this, ProfileActivity.class);
+					profileIntent.putExtra("playerId",args[1]);  
+		            startActivity(profileIntent);
+				}else if("club".equals(args[0])){
+					Intent clubIntent = new Intent(this, ClubPlayerListActivity.class);
+					clubIntent.putExtra("clubId",args[1]);
+					clubIntent.putExtra("clubName",args[2]);
+		            startActivity(clubIntent);
+				}
+			}
+            finish();			
+		}
+    }
+    
+    @Override
+	public void onScroll(AbsListView view, int firstVisibleItem,
+			int visibleItemCount, int totalItemCount) {
+		if ((firstVisibleItem + visibleItemCount == totalItemCount)
+				&& (totalItemCount != 0)) {
+			if (refreshable) {
+				refreshable = false;
+				loading.setVisibility(View.VISIBLE);
+				loadSearchResult();
+			}
+		}
+	}
+    
+    @Override
+	public void onScrollStateChanged(AbsListView view, int scrollState) {
+		// TODO Auto-generated method stub
+
+	}
+    
+    boolean firstTimeLoad = true;
+    
+    private void loadSearchResult(){
+    	additionalSearchList = null;
+    	String url = ServiceEndpointConstant.SEARCH_ENDPOINT+pageLimit+"/"+offset+"/"+query;
+		AsyncHttpClient client = new AsyncHttpClient();
+		client.get(url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+				Gson gson = new Gson();
+				SearchItemListAllResponseVO searchRes = gson.fromJson(response,
+						SearchItemListAllResponseVO.class);
+				if(searchRes!=null && searchRes.getSearchListAll()!=null){
+					totalCount = searchRes.getSearchListAll().getTotalCount();
+					additionalSearchList = searchRes.getSearchListAll().getSearchItemList();
+					if(additionalSearchList!=null&& additionalSearchList.size()>0){
+						filloutData();
+					}
+				}else{
+					loading.setVisibility(View.GONE);
+				}
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				String errorMSG = "Failed to get search data from server.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+						.show();
+			}
+		});
+    }
+    
+    private void filloutData() {
+    	if(firstTimeLoad){
+    		firstTimeLoad = false;
+    		
+			query_text_view.setText("Search: " + query+", "+totalCount +" records found");
+			
+    		searchList = new ArrayList<SearchItem>();
+    		searchList.addAll(additionalSearchList);
+    		
+    		ListView listView = (ListView) findViewById(R.id.ListView01);
+			adapter=new SearchAdapter(this, searchList, listView, 0, density);
+			
+			listView.setAdapter(adapter);
+			
+			listView.setOnScrollListener(this);
+	        
+			listView.setOnItemClickListener(new OnItemClickListener() {
+				@Override
+				public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+						long arg3) {
+					SearchItem item = searchList.get(arg2);
+					if(item!=null){
+						if("player".equals(item.getType())){
+							Intent intent = new Intent(arg0.getContext(),
+									ProfileActivity.class);
+							intent.putExtra("playerId",""+item.getPlayerId());
+							startActivity(intent);
+						}else if("club".equals(item.getType())){
+							Intent intent = new Intent(arg0.getContext(),
+									ClubPlayerListActivity.class);
+							intent.putExtra("clubId",""+item.getClubId());
+							intent.putExtra("clubName",""+item.getClubName());
+							startActivity(intent);
+						}
+					}
+				}
+			});
+    	}else{
+    		searchList.addAll(additionalSearchList);
+    		adapter.notifyDataSetChanged();
+    		loading.setVisibility(View.GONE);
+    	}
+    	offset = offset+additionalSearchList.size();
+    	if(offset<totalCount){
+    		refreshable = true;
+    	}else{
+    		refreshable = false;
+    	}
+	}
+}

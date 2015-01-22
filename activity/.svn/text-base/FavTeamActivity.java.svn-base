@@ -1,0 +1,292 @@
+package com.vizoal.activity;
+
+import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.http.entity.StringEntity;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.os.Handler;
+import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.analytics.tracking.android.EasyTracker;
+import com.google.gson.Gson;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.squareup.picasso.Picasso;
+import com.vizoal.common.constant.CommonConstant;
+import com.vizoal.common.constant.ServiceEndpointConstant;
+import com.vizoal.domain.Club;
+import com.vizoal.domain.League;
+import com.vizoal.util.Util;
+import com.vizoal.view.FavLeagueView;
+import com.vizoal.view.FavTeamView;
+import com.vizoal.vo.ClubListResponseVO;
+import com.vizoal.vo.LeagueListResponseVO;
+
+public class FavTeamActivity extends Activity {
+
+	final Handler mHandler = new Handler();
+	
+	private String TAG = "FavTeamActivity";
+	
+	private ProgressBar loadingProgressBar;
+	
+	private LeagueListResponseVO res;
+	
+	private List<League> leagueList;
+	
+	final private Context context = this;
+	
+	private SharedPreferences preferences;
+	
+	/** Called when the activity is first created. */
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.fav_league);
+
+		loadingProgressBar = (ProgressBar) findViewById(R.id.loadingProgressBar);
+
+        loadingProgressBar.setVisibility(View.VISIBLE);
+        
+        preferences = this.getSharedPreferences("com.vizoal", Context.MODE_PRIVATE);
+        
+		String url = ServiceEndpointConstant.TOP_LEAGUE_LIST_ENDPOINT;
+		AsyncHttpClient client = new AsyncHttpClient();
+		client.get(url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+				loadingProgressBar.setVisibility(View.INVISIBLE);
+				Gson gson = new Gson();
+				res = gson.fromJson(
+						response, LeagueListResponseVO.class);
+				if(res!=null && res.getLeagueList()!=null){
+					filloutData();
+				}
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				loadingProgressBar.setVisibility(View.INVISIBLE);
+				String errorMSG = "Failed to get league info.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+						.show();
+			}
+		});
+		
+		
+		Button save_button = (Button)findViewById(R.id.save_button);
+		save_button.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View arg0) {
+				
+				String teamids = preferences.getString(SplashActivity.favTeamKey,"");
+				if(teamids==null || "".equals(teamids.trim())){
+					Toast.makeText(getBaseContext(), "Please at least choose one favorite team", Toast.LENGTH_SHORT).show();
+				}else{
+					Intent intent = new Intent(context, HomePageActivity.class);
+					intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP); //Clean the activity stack
+			        startActivity(intent);  
+			        finish();
+				}
+			}
+		});
+	}
+	
+	private void saveFavTeamToServer(){
+		String userid = preferences.getString(CommonConstant.NOTIFICATION_ID,"");
+		if(userid!=null && !"".equals(userid)){
+			String favTeamIds = preferences.getString(SplashActivity.favTeamKey,"");
+			
+			String url = ServiceEndpointConstant.FAV_TEAM_ENDPOINT;
+			JSONObject jsonParams = new JSONObject();
+			try {
+				jsonParams.put("regId", userid);
+				jsonParams.put("clubIds", favTeamIds);
+			
+		        AsyncHttpClient client = new AsyncHttpClient();
+		        String str = jsonParams.toString();
+		        StringEntity entity = new StringEntity(str);
+		        Log.i(TAG, "json str "+str);
+		        client.post(context, url, entity, "application/json",
+		        		new AsyncHttpResponseHandler() {
+					@Override
+					public void onSuccess(String response) {
+						SharedPreferences.Editor editor = preferences.edit();
+						editor.putString(SplashActivity.favTeamFlagKey, "1");
+						editor.commit();
+					}
+
+					@Override
+					public void onFailure(java.lang.Throwable t) {
+						String errorMSG = "Failed to get register notification.";
+						Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+					}
+				});
+			} catch (JSONException e) {
+				e.printStackTrace();
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
+		}else{
+			SharedPreferences.Editor editor = preferences.edit();
+			editor.putString(SplashActivity.favTeamFlagKey, "0");
+			editor.commit();
+		}
+	}
+	
+	@Override
+	public void onStart() {
+	    super.onStart();
+	    EasyTracker.getInstance(this).activityStart(this);   
+	}
+
+	@Override
+	public void onStop() {
+	    super.onStop();
+	    saveFavTeamToServer();
+	    EasyTracker.getInstance(this).activityStop(this);   
+	}
+
+	private void filloutData() {
+ 
+		    leagueList = res.getLeagueList();
+		    
+		    if(leagueList!=null){
+		    	LinearLayout league_layout=(LinearLayout)findViewById(R.id.league_layout);
+				
+		    	for(final League league : leagueList){
+		    		FavLeagueView favLeagueView = new FavLeagueView(context);
+					ImageView league_logo = favLeagueView.getLeague_logo();
+					TextView league_name = favLeagueView.getLeague_name();
+					
+					final LinearLayout team_layout = favLeagueView.getTeam_layout();
+					final LinearLayout team_layout_loading = favLeagueView.getTeam_layout_loading();
+					
+					String imageUrl = ServiceEndpointConstant.LEAGUE_IMAGE_PRE+league.getFmId()+".png";
+			        Picasso.with(context)
+			        .load(imageUrl)
+			        .into(league_logo);
+			        
+				     league_name.setText(league.getName());
+				     
+				     league_layout.addView(favLeagueView);
+				     
+				     team_layout.setOnClickListener(null);
+				     
+				     favLeagueView.setOnClickListener(new OnClickListener() {
+							@Override
+							public void onClick(View arg0) {
+								if(team_layout.getVisibility()==View.INVISIBLE){
+									team_layout_loading.setVisibility(View.VISIBLE);
+									team_layout.setVisibility(View.VISIBLE);
+									loadClubs(league.getLeagueId(),team_layout,team_layout_loading);
+								}else if(team_layout.getVisibility()==View.GONE){
+									team_layout.setVisibility(View.VISIBLE);
+								}else{
+									team_layout.setVisibility(View.GONE);
+								}
+							}
+						});
+		    	}
+		    }
+	}
+	
+	Map<String,String> currentFavTeamMap =  new HashMap<String,String>();
+	private void loadClubs(Integer leagueId, final LinearLayout view, final LinearLayout team_layout_loading){
+		
+		String favTeamIds = preferences.getString(SplashActivity.favTeamKey,"");
+		if(favTeamIds!=null && !"".equals(favTeamIds)){
+			String[] args = favTeamIds.split(",");
+			for(int i=0;i<args.length;i++){
+				currentFavTeamMap.put(args[i], "");
+			}
+		}
+		
+		String url = ServiceEndpointConstant.CLUB_LIST_BY_LEAGUE_ID+leagueId;
+		AsyncHttpClient client = new AsyncHttpClient();
+		client.get(url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+				Gson gson = new Gson();
+				ClubListResponseVO clubListResponse = gson.fromJson(
+						response, ClubListResponseVO.class);
+				loadingProgressBar.setVisibility(View.INVISIBLE);
+				if(clubListResponse!=null){
+					List<Club> clubList = clubListResponse.getClubList();
+					if(clubList!=null && clubList.size()>0){
+						for(final Club club : clubList){
+							FavTeamView favTeamView = new FavTeamView(context);
+							ImageView team_logo = favTeamView.getTeam_logo();
+							TextView team_name = favTeamView.getTeam_name();
+							final Button add_button = favTeamView.getAdd_button();
+							
+							String imageUrl = ServiceEndpointConstant.CLUB_FLAG_IMAGE_PRE+"2.0/"+club.getFmId()+".png";
+					        
+					        Picasso.with(context)
+					        .load(imageUrl)
+					        .into(team_logo);
+					        
+					        team_name.setText(club.getClubNameShort());
+						     
+						    view.addView(favTeamView);
+						    
+						    if(currentFavTeamMap.containsKey(""+club.getClubId())){
+						    	add_button.setText("Added");
+								add_button.setBackgroundColor(Color.parseColor("#27ae60"));
+						    }
+						    
+						    add_button.setOnClickListener(new OnClickListener() {
+								@Override
+								public void onClick(View arg0) {
+									String newFavTeam = "";
+									String favTeamIds = preferences.getString(SplashActivity.favTeamKey,"");
+									String addStr = add_button.getText().toString();
+									if("Add".equalsIgnoreCase(addStr.trim())){
+										add_button.setText("Added");
+										add_button.setBackgroundColor(Color.parseColor("#27ae60"));
+										newFavTeam = Util.addFavTeam(club.getClubId(),favTeamIds);
+									}else{
+										add_button.setText("  Add  ");
+										add_button.setBackgroundColor(Color.parseColor("#7A8B8B"));
+										newFavTeam = Util.removeFavTeam(club.getClubId(),favTeamIds);
+									}
+									SharedPreferences.Editor editor = preferences.edit();
+									editor.putString(SplashActivity.favTeamKey, newFavTeam);
+									editor.commit();
+								}
+							});
+						}
+					}
+					team_layout_loading.setVisibility(View.GONE);
+				}
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				loadingProgressBar.setVisibility(View.INVISIBLE);
+				String errorMSG = "Failed to get players from server.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				 
+			}
+		});
+	}
+}

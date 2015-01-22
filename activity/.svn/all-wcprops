@@ -1,0 +1,143 @@
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/vizoal_rep/!svn/ver/562/branch/VizoalAndroid/src/com/vizoal/activity
+END
+VersionUpdateActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/svn/vizoal_rep/!svn/ver/520/branch/VizoalAndroid/src/com/vizoal/activity/VersionUpdateActivity.java
+END
+PlayerListActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/vizoal_rep/!svn/ver/544/branch/VizoalAndroid/src/com/vizoal/activity/PlayerListActivity.java
+END
+FavPlayerListActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/svn/vizoal_rep/!svn/ver/297/branch/VizoalAndroid/src/com/vizoal/activity/FavPlayerListActivity.java
+END
+GCMIntentService.java
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svn/vizoal_rep/!svn/ver/544/branch/VizoalAndroid/src/com/vizoal/activity/GCMIntentService.java
+END
+RegisterUsingFacebook.java
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/svn/vizoal_rep/!svn/ver/419/branch/VizoalAndroid/src/com/vizoal/activity/RegisterUsingFacebook.java
+END
+FavTeamActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/vizoal_rep/!svn/ver/541/branch/VizoalAndroid/src/com/vizoal/activity/FavTeamActivity.java
+END
+ClubActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/vizoal_rep/!svn/ver/562/branch/VizoalAndroid/src/com/vizoal/activity/ClubActivity.java
+END
+ClubPlayerListActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/svn/vizoal_rep/!svn/ver/525/branch/VizoalAndroid/src/com/vizoal/activity/ClubPlayerListActivity.java
+END
+ClubListActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svn/vizoal_rep/!svn/ver/360/branch/VizoalAndroid/src/com/vizoal/activity/ClubListActivity.java
+END
+SearchContentProvider.java
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/svn/vizoal_rep/!svn/ver/477/branch/VizoalAndroid/src/com/vizoal/activity/SearchContentProvider.java
+END
+ClubProfileActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/svn/vizoal_rep/!svn/ver/559/branch/VizoalAndroid/src/com/vizoal/activity/ClubProfileActivity.java
+END
+BaseActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/vizoal_rep/!svn/ver/505/branch/VizoalAndroid/src/com/vizoal/activity/BaseActivity.java
+END
+SettingActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/vizoal_rep/!svn/ver/419/branch/VizoalAndroid/src/com/vizoal/activity/SettingActivity.java
+END
+HomePageActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svn/vizoal_rep/!svn/ver/557/branch/VizoalAndroid/src/com/vizoal/activity/HomePageActivity.java
+END
+BrowseActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/svn/vizoal_rep/!svn/ver/497/branch/VizoalAndroid/src/com/vizoal/activity/BrowseActivity.java
+END
+ProfileActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/vizoal_rep/!svn/ver/544/branch/VizoalAndroid/src/com/vizoal/activity/ProfileActivity.java
+END
+LoginActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/vizoal_rep/!svn/ver/419/branch/VizoalAndroid/src/com/vizoal/activity/LoginActivity.java
+END
+SplashActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/svn/vizoal_rep/!svn/ver/544/branch/VizoalAndroid/src/com/vizoal/activity/SplashActivity.java
+END
+MatchActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/vizoal_rep/!svn/ver/544/branch/VizoalAndroid/src/com/vizoal/activity/MatchActivity.java
+END
+RegisterActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svn/vizoal_rep/!svn/ver/419/branch/VizoalAndroid/src/com/vizoal/activity/RegisterActivity.java
+END
+MatchListActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 96
+/svn/vizoal_rep/!svn/ver/544/branch/VizoalAndroid/src/com/vizoal/activity/MatchListActivity.java
+END
+SearchableActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/vizoal_rep/!svn/ver/497/branch/VizoalAndroid/src/com/vizoal/activity/SearchableActivity.java
+END
+TopLeagueListActivity.java
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/svn/vizoal_rep/!svn/ver/552/branch/VizoalAndroid/src/com/vizoal/activity/TopLeagueListActivity.java
+END

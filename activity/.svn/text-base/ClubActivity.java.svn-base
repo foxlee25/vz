@@ -1,0 +1,633 @@
+package com.vizoal.activity;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.os.Bundle;
+import android.os.Parcelable;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.app.FragmentTransaction;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.PagerTabStrip;
+import android.support.v4.view.ViewPager;
+import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.support.v7.app.ActionBar;
+import android.util.DisplayMetrics;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.ListView;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.RadioGroup.OnCheckedChangeListener;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+
+import com.google.analytics.tracking.android.EasyTracker;
+import com.vizoal.adapter.TitleNavigationAdapter;
+import com.vizoal.common.constant.CommonConstant;
+import com.vizoal.domain.League;
+import com.vizoal.domain.Match;
+import com.vizoal.fragment.LeagueStandingFragment;
+import com.vizoal.fragment.MatchListFragment;
+import com.vizoal.fragment.TopAssistFragment;
+import com.vizoal.fragment.TopScorerFragment;
+import com.vizoal.util.Util;
+
+public class ClubActivity extends BaseActivity implements ActionBar.OnNavigationListener{
+
+	private String TAG = "ClubActivity";
+	private ViewPager mPager; 
+	private List<View> listViews;  
+	private ListView matchListView;
+//	private League league;
+	private List<Match> matchList;
+	private RelativeLayout t1, t2, t3;
+	private String leagueId = "";
+	private String leagueName = "";
+	private int currentRound,maxRound;
+	private int leagueIndex;
+//	private int orginalCurrentRound = 0;
+	static float density;
+	final private Context context = this;
+	private Typeface typeface_medium,typeface_regular,typeface_light;
+	private RadioButton radioButton_lastRound, radioButton_currentRound, radioButton_nextRound;
+	
+	private TextView fixture_textview,statistics_textview;
+	
+	private SharedPreferences preferences;
+	
+	String[] leagueIdArray;
+    String[] leagueNameArray;
+    String[] leagueFMIDArray;
+    String[] leagueCurrentRoundArray;
+    String[] leagueMaxRoundArray;
+    
+    boolean firstTimeFlag = true;
+	
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.club_main);
+
+		density = getResources().getDisplayMetrics().density;
+		density = Util.normalizeDensity(density);
+		
+		DisplayMetrics dm = new DisplayMetrics();
+		getWindowManager().getDefaultDisplay().getMetrics(dm);
+
+		Intent intent=this.getIntent();
+		
+		leagueId = intent.getStringExtra("leagueId");
+		
+		leagueName = intent.getStringExtra("leagueName");
+		
+		currentRound = Integer.parseInt(intent.getStringExtra("currentRound"));
+		
+		maxRound = Integer.parseInt(intent.getStringExtra("maxRound"));
+		
+		leagueIndex = Integer.parseInt(intent.getStringExtra("leagueIndex"));
+		
+		ActionBar actionBar = getSupportActionBar();
+		getSupportActionBar().setTitle(leagueName); 
+		
+		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		
+		actionBar.setDisplayShowTitleEnabled(false);
+        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
+        
+        typeface_medium = Typeface.createFromAsset(context.getAssets(), "fonts/HelveticaNeueMedium.ttf");
+		typeface_regular = Typeface.createFromAsset(context.getAssets(), "fonts/HelveticaNeue.ttf");
+		typeface_light = Typeface.createFromAsset(context.getAssets(), "fonts/HelveticaNeueLight.ttf");
+		
+        
+        preferences = this.getSharedPreferences("com.vizoal", Context.MODE_PRIVATE);
+        String leagueIds = preferences.getString(CommonConstant.KEY_TOP_LEAGUE_IDS,"");
+        String leagueNames = preferences.getString(CommonConstant.KEY_TOP_LEAGUE_NAMES,"");
+        String leagueFMIDs = preferences.getString(CommonConstant.KEY_TOP_LEAGUE_FMIDS,"");
+        String leagueCurrentRoundIDs = preferences.getString(CommonConstant.KEY_TOP_LEAGUE_CURRENTROUND,"");
+        String leagueMaxRounds = preferences.getString(CommonConstant.KEY_TOP_LEAGUE_MAXROUND,"");
+        
+        leagueIdArray = leagueIds.split(",");
+        leagueNameArray = leagueNames.split(",");
+        leagueFMIDArray = leagueFMIDs.split(",");
+        leagueCurrentRoundArray = leagueCurrentRoundIDs.split(",");
+        leagueMaxRoundArray = leagueMaxRounds.split(",");
+        
+        List<League> leagueList = new ArrayList<League>();
+        for(int i=0;i<leagueIdArray.length;i++){
+        	League league = new League();
+        	league.setLeagueId(Integer.parseInt(leagueIdArray[i]));
+        	league.setName(leagueNameArray[i]);
+        	league.setFmId(Integer.parseInt(leagueFMIDArray[i]));
+        	leagueList.add(league);
+        }
+        
+        fixture_textview = (TextView) findViewById(R.id.fixture_textview);
+        statistics_textview = (TextView) findViewById(R.id.statistics_textview);
+        
+        fixture_textview.setTypeface(typeface_regular);
+        statistics_textview.setTypeface(typeface_regular);
+         
+        // title drop down adapter
+        TitleNavigationAdapter adapter = new TitleNavigationAdapter(getApplicationContext(), leagueList);
+        
+        // assigning the spinner navigation    
+        actionBar.setListNavigationCallbacks(adapter, this);
+        actionBar.setSelectedNavigationItem(leagueIndex);
+        
+        initTextView();
+		initViewPager();
+        
+	}
+	
+	@Override
+	public void onStart() {
+	    super.onStart();
+	    EasyTracker.getInstance(this).activityStart(this);   
+	}
+
+	@Override
+	public void onStop() {
+	    super.onStop();
+	    EasyTracker.getInstance(this).activityStop(this);   
+	}
+	
+	private void initTextView() {
+		t1 = (RelativeLayout) findViewById(R.id.tab1);
+		t2 = (RelativeLayout) findViewById(R.id.tab2);
+		
+		t1.setOnClickListener(new MyOnClickListener(0));
+		t2.setOnClickListener(new MyOnClickListener(1));
+	}
+
+	private void initViewPager() {
+		mPager = (ViewPager) findViewById(R.id.vPager);
+		listViews = new ArrayList<View>();
+		LayoutInflater mInflater = getLayoutInflater();
+		listViews.add(mInflater.inflate(R.layout.match_list_collection, null));
+		listViews.add(mInflater.inflate(R.layout.statistics_collection, null));
+		mPager.setAdapter(new MyPagerAdapter(listViews));
+		mPager.setCurrentItem(0);
+		mPager.setOnPageChangeListener(new TabPageChangeListener());
+	}
+	
+	public class MyPagerAdapter extends PagerAdapter {
+		public List<View> mListViews;
+
+		public MyPagerAdapter(List<View> mListViews) {
+			this.mListViews = mListViews;
+		}
+
+		@Override
+		public void destroyItem(View arg0, int arg1, Object arg2) {
+			((ViewPager) arg0).removeView(mListViews.get(arg1));
+		}
+		@Override
+		public void finishUpdate(View arg0) {
+		}
+		@Override
+		public int getCount() {
+			return mListViews.size();
+		}
+		public int getItemPosition(Object object) {  
+		    return POSITION_NONE;  
+		} 
+
+		@Override
+		public Object instantiateItem(View viewPager, int pageIndex) {
+			if (pageIndex < 4) {
+				((ViewPager) viewPager).addView(mListViews.get(pageIndex % 4), 0);
+			}
+			if (pageIndex == 0) {
+//				RadioGroup match_radioGroup = (RadioGroup) findViewById(R.id.match_radiogroup);
+//				match_radioGroup.setOnCheckedChangeListener(matchlist_checkedChangeListener);
+//				
+//				radioButton_lastRound = (RadioButton) findViewById(R.id.radio_lastRound);
+//				radioButton_currentRound = (RadioButton) findViewById(R.id.radio_currentRound);
+//				radioButton_nextRound = (RadioButton) findViewById(R.id.radio_nextRound);
+//				
+//				matchListView = (ListView) findViewById(R.id.match_list_view);
+//
+//				radioButton_lastRound.setText("Matchday "+(currentRound-1));
+//				radioButton_nextRound.setText("Matchday "+(currentRound+1));
+//				
+//				filloutMatchData();
+				
+				loadMatchList();
+			}
+			if (pageIndex == 1) {
+//				RadioGroup radioGroup = (RadioGroup) findViewById(R.id.radiogroup);
+//				radioGroup.setOnCheckedChangeListener(checkedChangeListener);
+//				
+//				if("".equals(selectedRadio)){
+//					selectedRadio = "radio_standing";
+//					Bundle bundle = new Bundle();
+//					bundle.putString("leagueId", leagueId);
+//					LeagueStandingFragment newFragment = new LeagueStandingFragment();
+//					newFragment.setArguments(bundle);
+//					FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+//					transaction.replace(R.id.fragment_container, newFragment);
+//					transaction.commit();
+//				}
+				
+				loadStatistics();
+				
+				
+			}
+			if (pageIndex == 2) {
+				
+			}
+			if(pageIndex == 3){ 
+				
+			}
+			return mListViews.get(pageIndex % 4);
+		}
+
+		@Override
+		public boolean isViewFromObject(View arg0, Object arg1) {
+			return arg0 == (arg1);
+		}
+
+		@Override
+		public void restoreState(Parcelable arg0, ClassLoader arg1) {
+		}
+
+		@Override
+		public Parcelable saveState() {
+			return null;
+		}
+
+		@Override
+		public void startUpdate(View arg0) {
+		}
+	}
+	
+	private void filloutMatchData() {
+		FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+		Bundle bundle = new Bundle();
+		bundle.putString("leagueId", leagueId);
+		bundle.putFloat("density", density);
+		
+		if("".equals(match_selected_radio_round)){
+			match_selected_radio_round = "radio_currentRound";
+		}
+		
+		if("radio_lastRound".equals(match_selected_radio_round)){
+			bundle.putString("currentRound", ""+(currentRound-1));
+		}else if("radio_currentRound".equals(match_selected_radio_round)){
+			bundle.putString("currentRound", ""+currentRound);
+		}else if("radio_nextRound".equals(match_selected_radio_round)){
+			bundle.putString("currentRound", ""+(currentRound+1));
+		}
+		
+		
+		MatchListFragment newFragment = new MatchListFragment();
+		newFragment.setArguments(bundle);
+		transaction.replace(R.id.matchList_fragment_container, newFragment);
+		transaction.commit();
+	}
+	
+	@Override
+	public void onPause(){
+		super.onPause();
+		Log.i(TAG, "onPause...");
+		resumedFlag = true;
+	}
+	
+	boolean resumedFlag = false;
+	
+	@Override
+	public void onResume(){
+		super.onResume();
+		Log.i(TAG, "onResume...");
+		if(resumedFlag){
+//			filloutMatchData();
+			resumedFlag = false;
+		}
+	}
+	
+	@Override
+	protected void onNewIntent(Intent intent) {
+	    super.onNewIntent(intent);
+	    setIntent(intent); //now getIntent() should always return the last received intent
+	}
+	
+	public class TabPageChangeListener implements OnPageChangeListener {
+//		View tab1_bottom = (View) findViewById(R.id.tab1_bottom);
+//		View tab2_bottom = (View) findViewById(R.id.tab2_bottom);
+		
+		public void onPageSelected(int arg0) {
+			switch (arg0) {
+			case 0:
+				fixture_textview.setTextColor(Color.parseColor("#2f9658"));
+		        statistics_textview.setTextColor(Color.parseColor("#ffffff"));
+				break;
+			case 1:
+				statistics_textview.setTextColor(Color.parseColor("#2f9658"));
+				fixture_textview.setTextColor(Color.parseColor("#ffffff"));
+				break;
+			}
+		}
+		public void onPageScrolled(int arg0, float arg1, int arg2) {
+		}
+		public void onPageScrollStateChanged(int arg0) {
+		}
+	}
+	
+	public class MyOnClickListener implements View.OnClickListener {
+		private int index = 0;
+//		private View tab1_bottom = (View) findViewById(R.id.tab1_bottom);
+//        private View tab2_bottom = (View) findViewById(R.id.tab2_bottom);
+
+		public MyOnClickListener(int i) {
+			index = i;
+		}
+		public void onClick(View v) {
+//		    if (index == 0)
+//                tab2_bottom.setVisibility(View.GONE);
+//            else
+//                tab1_bottom.setVisibility(View.GONE);
+			mPager.setCurrentItem(index);
+		}
+	};
+	
+	
+	String selectedRadio = "";
+	private OnCheckedChangeListener checkedChangeListener = new OnCheckedChangeListener() {
+
+		@Override
+		public void onCheckedChanged(RadioGroup group, int checkedId) {
+			
+			FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+			
+			switch (checkedId) {
+			case R.id.radio_standing:
+				if(!"radio_standing".equals(selectedRadio)){
+					Bundle bundle = new Bundle();
+					bundle.putString("leagueId", leagueId);
+					bundle.putFloat("density", density);
+					LeagueStandingFragment newFragment = new LeagueStandingFragment();
+					newFragment.setArguments(bundle);
+					transaction.replace(R.id.fragment_container, newFragment);
+					transaction.commit();
+				}
+				selectedRadio = "radio_standing";
+				break;
+			case R.id.radio_top_scorer:
+				if(!"radio_top_scorer".equals(selectedRadio)){
+					Bundle bundle = new Bundle();
+					bundle.putString("leagueId", leagueId);
+					bundle.putFloat("density", density);
+					TopScorerFragment newFragment = new TopScorerFragment();
+					newFragment.setArguments(bundle);
+					transaction.replace(R.id.fragment_container, newFragment);
+					transaction.commit();
+				}
+				selectedRadio = "radio_top_scorer";
+				break;
+			case R.id.radio_top_assits:
+				if(!"radio_top_assits".equals(selectedRadio)){
+					Bundle bundle = new Bundle();
+					bundle.putString("leagueId", leagueId);
+					bundle.putFloat("density", density);
+					TopAssistFragment newFragment = new TopAssistFragment();
+					newFragment.setArguments(bundle);
+					transaction.replace(R.id.fragment_container, newFragment);
+					transaction.commit();
+				}
+				selectedRadio = "radio_top_assits";
+				break;
+			 
+			default:
+				break;
+			}
+		}
+	};
+	
+	String match_selected_radio_round = "";
+	
+	private OnCheckedChangeListener matchlist_checkedChangeListener = new OnCheckedChangeListener() {
+
+		@Override
+		public void onCheckedChanged(RadioGroup group, int checkedId) {
+			
+			FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+			
+			switch (checkedId) {
+			case R.id.radio_lastRound:
+				if(!"radio_lastRound".equals(match_selected_radio_round)){
+//					if(lastFragment==null){
+						Bundle bundle = new Bundle();
+						bundle.putString("leagueId", leagueId);
+						bundle.putFloat("density", density);
+						bundle.putString("currentRound", ""+(currentRound-1));
+						lastFragment = new MatchListFragment();
+						lastFragment.setArguments(bundle);
+//					}
+					transaction.replace(R.id.matchList_fragment_container, lastFragment);
+					transaction.commit();
+				}
+				match_selected_radio_round = "radio_lastRound";
+				break;
+			case R.id.radio_currentRound:
+				if(!"radio_currentRound".equals(match_selected_radio_round)){
+//					if(currentFragment==null){
+						Bundle bundle = new Bundle();
+						bundle.putString("leagueId", leagueId);
+						bundle.putFloat("density", density);
+						bundle.putString("currentRound", ""+currentRound);
+						currentFragment = new MatchListFragment();
+						currentFragment.setArguments(bundle);
+//					}
+					transaction.replace(R.id.matchList_fragment_container, currentFragment);
+					transaction.commit();
+				}
+				match_selected_radio_round = "radio_currentRound";
+				break;
+			case R.id.radio_nextRound:
+				if(!"radio_nextRound".equals(match_selected_radio_round)){
+//					if(nextFragment==null){
+						Bundle bundle = new Bundle();
+						bundle.putString("leagueId", leagueId);
+						bundle.putFloat("density", density);
+						bundle.putString("currentRound", ""+(currentRound+1));
+						nextFragment = new MatchListFragment();
+						nextFragment.setArguments(bundle);
+//					}
+					transaction.replace(R.id.matchList_fragment_container, nextFragment);
+					transaction.commit();
+				}
+				match_selected_radio_round = "radio_nextRound";
+				break;
+			 
+			default:
+				break;
+			}
+		}
+	};
+	MatchListFragment lastFragment;
+	MatchListFragment currentFragment;
+	MatchListFragment nextFragment;
+	
+	private void loadMatchList(){
+		ViewPager mViewPager = (ViewPager) findViewById(R.id.match_pager);
+		
+		PagerTabStrip pagerTabStrip = (PagerTabStrip) findViewById(R.id.match_pager_tab_strip);
+//		pagerTabStrip.setDrawFullUnderline(true);
+		pagerTabStrip.setTabIndicatorColor(getResources().getColor(R.color.blue_overlay));
+		
+		for (int i = 0; i < pagerTabStrip.getChildCount(); ++i) {
+		    View nextChild = pagerTabStrip.getChildAt(i);
+		    if (nextChild instanceof TextView) {
+		       TextView textViewToConvert = (TextView) nextChild;
+		       textViewToConvert.setTypeface(typeface_light);
+		    }
+		}
+		
+		MatchListPagerAdapter pagerAdapter = new MatchListPagerAdapter(getSupportFragmentManager(),maxRound,currentRound, Integer.parseInt(leagueId));
+        mViewPager.setAdapter(pagerAdapter);
+        mViewPager.setCurrentItem(currentRound-1);
+	}
+	
+	private void loadStatistics(){
+		ViewPager mViewPager = (ViewPager) findViewById(R.id.statistic_pager);
+		
+		PagerTabStrip pagerTabStrip = (PagerTabStrip) findViewById(R.id.statistics_pager_tab_strip);
+//		pagerTabStrip.setDrawFullUnderline(true);
+		pagerTabStrip.setTabIndicatorColor(getResources().getColor(R.color.blue_overlay));
+		
+		for (int i = 0; i < pagerTabStrip.getChildCount(); ++i) {
+		    View nextChild = pagerTabStrip.getChildAt(i);
+		    if (nextChild instanceof TextView) {
+		       TextView textViewToConvert = (TextView) nextChild;
+		       textViewToConvert.setTypeface(typeface_light);
+		    }
+		}
+		
+		StatisticsPagerAdapter pageAdapter = new StatisticsPagerAdapter(getSupportFragmentManager(),Integer.parseInt(leagueId));
+        mViewPager.setAdapter(pageAdapter);
+        mViewPager.setCurrentItem(1);
+	}
+	
+	public static class MatchListPagerAdapter extends FragmentStatePagerAdapter {
+
+    	private int maxRound;
+    	private int currentRound;
+    	private int leagueId;
+    	
+        public MatchListPagerAdapter(FragmentManager fm, int maxRound,int currentRound, int leagueId) {
+            super(fm);
+        	this.maxRound = maxRound;
+        	this.currentRound = currentRound;
+        	this.leagueId = leagueId;
+        }
+
+        @Override
+        public Fragment getItem(int i) {
+            Fragment fragment = new MatchListFragment();
+            Bundle args = new Bundle();
+            args.putString("currentRound", (i+1)+""); 
+            args.putString("leagueId", ""+leagueId);
+            fragment.setArguments(args);
+            return fragment;
+        }
+
+        @Override
+        public int getCount() {
+            // For this contrived example, we have a 100-object collection.
+            return maxRound;
+        }
+
+        @Override
+        public CharSequence getPageTitle(int position) {
+        	if(currentRound==(position+1)){
+        		return "Current";
+        	}else{
+        		return "Matchday " + (position + 1);
+        	}
+        	
+        }
+    }
+	
+	public static class StatisticsPagerAdapter extends FragmentStatePagerAdapter {
+
+    	private int leagueId;
+    	
+        public StatisticsPagerAdapter(FragmentManager fm, Integer leagueId) {
+            super(fm);
+        	this.leagueId = leagueId;
+        }
+
+        @Override
+        public Fragment getItem(int i) {
+        	if(i==0){
+        		Fragment fragment = new TopScorerFragment();
+                Bundle args = new Bundle();
+                args.putString("leagueId", ""+leagueId);
+                args.putFloat("density", density);
+                
+                fragment.setArguments(args);
+                return fragment;
+        	}else if(i==1){
+        		Fragment fragment = new LeagueStandingFragment();
+                Bundle args = new Bundle();
+                args.putString("leagueId", ""+leagueId);
+                args.putFloat("density", density);
+                fragment.setArguments(args);
+                return fragment;
+        	}else{
+        		Fragment fragment = new TopAssistFragment();
+                Bundle args = new Bundle();
+                args.putString("leagueId", ""+leagueId);
+                args.putFloat("density", density);
+                fragment.setArguments(args);
+                return fragment;
+        	}
+            
+        }
+
+        @Override
+        public int getCount() {
+            return 3;
+        }
+
+        @Override
+        public CharSequence getPageTitle(int position) {
+        	String title = "";
+        	if(position==0){
+        		title = "Top Scorers";
+        	}else if(position==1){
+        		title="Standing";
+        	}else{
+        		title="Top Assists";
+        	}
+        	return title;
+        }
+    }
+ 
+    @Override
+    public boolean onNavigationItemSelected(int itemPosition, long itemId) {
+    	if(firstTimeFlag){
+    		firstTimeFlag = false;
+    	}else{
+//    		Intent intent = this.getIntent();
+    		currentRound = Integer.parseInt(leagueCurrentRoundArray[itemPosition]);
+    		maxRound = Integer.parseInt(leagueMaxRoundArray[itemPosition]);
+    		leagueId = leagueIdArray[itemPosition];
+//    		intent.putExtra("leagueId",leagueIdArray[itemPosition]);  
+//    		intent.putExtra("leagueName",leagueNameArray[itemPosition]);
+//    		intent.putExtra("currentRound",""+currentRound); 
+//    		intent.putExtra("leagueIndex",""+itemPosition);
+//    		this.recreate();
+    		initViewPager();
+    	}
+        return true;
+    }
+}

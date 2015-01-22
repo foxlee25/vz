@@ -1,0 +1,336 @@
+package com.vizoal.activity;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Parcelable;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
+import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
+import android.widget.ListView;
+import android.widget.SimpleAdapter;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.analytics.tracking.android.EasyTracker;
+import com.google.gson.Gson;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.vizoal.adapter.PlayerListAdapter;
+import com.vizoal.common.constant.ServiceEndpointConstant;
+import com.vizoal.domain.League;
+import com.vizoal.domain.Player;
+import com.vizoal.vo.LeagueListResponseVO;
+import com.vizoal.vo.PlayerListResponseVO;
+
+public class BrowseActivity extends Activity {
+
+	private String TAG = "BrowseActivity";
+	private float density;
+
+	private ViewPager mPager; 
+	private List<View> listViews;  
+	private TextView t1, t2; 
+	private int offset = 0; 
+	private int bmpW; 
+	
+	private LeagueListResponseVO leagueRes = null;
+	
+	private PlayerListResponseVO  nationalityPlayerListRes = null;
+	
+	private String nationalityId ;
+	
+    final Handler mHandler = new Handler();
+	
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.browse);
+		
+		density = getResources().getDisplayMetrics().density;
+
+		Intent intent=this.getIntent();
+		nationalityId=intent.getStringExtra("nationalityId");
+		
+		InitTextView();
+		InitViewPager();
+		
+		Button page_title_btn = (Button)findViewById(R.id.page_title_btn);
+		if(page_title_btn!=null){
+			page_title_btn.setText("Browse");
+		}
+	}
+	
+	@Override
+	public void onStart() {
+	    super.onStart();
+	    EasyTracker.getInstance(this).activityStart(this);   
+	}
+
+	@Override
+	public void onStop() {
+	    super.onStop();
+	    EasyTracker.getInstance(this).activityStop(this);   
+	}
+
+	private void InitTextView() {
+		t1 = (TextView) findViewById(R.id.text1);
+		t2 = (TextView) findViewById(R.id.text2);
+
+		t1.setOnClickListener(new MyOnClickListener(0));
+		t2.setOnClickListener(new MyOnClickListener(2));
+	}
+
+	private void InitViewPager() {
+		mPager = (ViewPager) findViewById(R.id.vPager);
+		listViews = new ArrayList<View>();
+		LayoutInflater mInflater = getLayoutInflater();
+		listViews.add(mInflater.inflate(R.layout.browse_tab1, null));
+		listViews.add(mInflater.inflate(R.layout.browse_tab2, null));
+		mPager.setAdapter(new MyPagerAdapter(listViews));
+		mPager.setCurrentItem(0);
+		mPager.setOnPageChangeListener(new MyOnPageChangeListener());
+	}
+
+	public class MyPagerAdapter extends PagerAdapter {
+		public List<View> mListViews;
+
+		public MyPagerAdapter(List<View> mListViews) {
+			this.mListViews = mListViews;
+		}
+
+		@Override
+		public void destroyItem(View arg0, int arg1, Object arg2) {
+			((ViewPager) arg0).removeView(mListViews.get(arg1));
+		}
+
+		@Override
+		public void finishUpdate(View arg0) {
+		}
+
+		@Override
+		public int getCount() {
+			return mListViews.size();
+		}
+
+		@Override
+		public Object instantiateItem(View arg0, int arg1) {
+			System.out.println("arg1=="+arg1);
+			if (arg1 < 2) {
+				((ViewPager) arg0).addView(mListViews.get(arg1 % 2), 0);
+			}
+			if (arg1 == 0) {
+				String url = ServiceEndpointConstant.LEAGUE_LIST_BY_NATIONALITY_ID+nationalityId;
+				AsyncHttpClient client = new AsyncHttpClient();
+				client.get(url, new AsyncHttpResponseHandler() {
+					@Override
+					public void onSuccess(String response) {
+						Gson gson = new Gson();
+						leagueRes = gson.fromJson(
+								response, LeagueListResponseVO.class);
+						filloutLeagueData();
+					}
+
+					@Override
+					public void onFailure(java.lang.Throwable t) {
+						String errorMSG = "Failed to get home page players from server.";
+						Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+						Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+								.show();
+					}
+				});
+			}
+			if (arg1 == 1) {
+				String url = ServiceEndpointConstant.NATIONAL_PLAYER_LIST_BY_NATIONALITY_ID+nationalityId;
+				AsyncHttpClient client = new AsyncHttpClient();
+				client.get(url, new AsyncHttpResponseHandler() {
+					@Override
+					public void onSuccess(String response) {
+						Gson gson = new Gson();
+						nationalityPlayerListRes = gson.fromJson(
+								response, PlayerListResponseVO.class);
+						filloutNationalPlayerListData();
+					}
+
+					@Override
+					public void onFailure(java.lang.Throwable t) {
+						String errorMSG = "Failed to get home page players from server.";
+						Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+						Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+								.show();
+					}
+				});
+			}
+			return mListViews.get(arg1 % 2);
+		}
+
+		@Override
+		public boolean isViewFromObject(View arg0, Object arg1) {
+			return arg0 == (arg1);
+		}
+
+		@Override
+		public void restoreState(Parcelable arg0, ClassLoader arg1) {
+		}
+
+		@Override
+		public Parcelable saveState() {
+			return null;
+		}
+
+		@Override
+		public void startUpdate(View arg0) {
+		}
+	}
+	
+	private void filloutLeagueData(){
+		ListView list = (ListView) findViewById(R.id.left_listView01);
+        ArrayList<HashMap<String, Object>> listItem = new ArrayList<HashMap<String, Object>>();
+
+		if (leagueRes != null) {
+			final List<League> leagueList = leagueRes.getLeagueList();
+			if(leagueList!=null){
+				for (int i = 0; i < leagueList.size(); i++) {
+					HashMap<String, Object> map = new HashMap<String, Object>();
+					League league = leagueList.get(i);
+					map.put("photo", null);
+					map.put("ItemText", league.getName());
+					listItem.add(map);
+				}
+				SimpleAdapter listItemAdapter = new SimpleAdapter(getAppContext(),listItem, 
+			            R.layout.browse_list_league,
+			            new String[] { "ItemText","photo"}, 
+			            new int[] {R.id.ItemText,R.id.photo}
+			        );
+		        list.setAdapter(listItemAdapter);
+		        list.setOnItemClickListener(new OnItemClickListener() {
+					@Override
+					public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+							long arg3) {
+						Intent intent = new Intent(arg0.getContext(),
+								ClubListActivity.class);
+						League innerLeague = leagueList.get(arg2);
+						if(innerLeague!=null){
+							intent.putExtra("leagueId",""+innerLeague.getLeagueId());  
+						}
+						startActivity(intent);
+					}
+				});
+			}
+		}
+        
+	}
+	
+	private void filloutNationalPlayerListData(){
+		ListView list = (ListView) findViewById(R.id.right_listView01);
+		 
+//      ArrayList<HashMap<String, Object>> listItem = new ArrayList<HashMap<String, Object>>();
+		if (nationalityPlayerListRes != null ) {
+			final List<Player> playerList = nationalityPlayerListRes.getPlayerList();
+//			if(playerList!=null){
+//				for (int i = 0; i < playerList.size(); i++) {
+//					HashMap<String, Object> map = new HashMap<String, Object>();
+//					Player player = playerList.get(i);
+//					map.put("photo", null);
+//					map.put("ItemText", player.getFirstName()+" "+player.getLastName());
+//					listItem.add(map);
+//				}
+//				SimpleAdapter listItemAdapter = new SimpleAdapter(getAppContext(),listItem, 
+//			            R.layout.browse_list_player,
+//			            new String[] { "ItemText","photo"}, 
+//			            new int[] {R.id.ItemText,R.id.photo}
+//			     );
+		
+			PlayerListAdapter adapter=new PlayerListAdapter(this, playerList, list, 2, density);
+			list.setAdapter(adapter);
+			
+			list.setOnItemClickListener(new OnItemClickListener() {
+				@Override
+				public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+						long arg3) {
+					Intent intent = new Intent(arg0.getContext(),
+							ProfileActivity.class);
+					Player innerPlayer = playerList.get(arg2);
+					if(innerPlayer!=null){
+						intent.putExtra("playerId",""+innerPlayer.getPlayerId());  
+						intent.putExtra("nationality_fmid",""+innerPlayer.getNationDisplay_fmid());  
+					}
+					startActivity(intent);
+				}
+			});
+		}
+	}
+
+	public class MyOnClickListener implements View.OnClickListener {
+		private int index = 0;
+
+		public MyOnClickListener(int i) {
+			index = i;
+		}
+
+		public void onClick(View v) {
+			mPager.setCurrentItem(index);
+		}
+	};
+
+	
+	
+	public class MyOnPageChangeListener implements OnPageChangeListener {
+
+		int one = offset * 2 + bmpW; 
+		int two = one * 2;
+		
+		TextView leftTab_bg = (TextView) findViewById(R.id.left_tab_bg);
+		TextView rightTab_bg = (TextView) findViewById(R.id.right_tab_bg);
+		
+		TextView leftTab = (TextView) findViewById(R.id.text1);
+		TextView rightTab = (TextView) findViewById(R.id.text2);
+
+		public void onPageSelected(int arg0) {
+			switch (arg0) {
+			case 0:
+				leftTab_bg.setBackgroundColor(getResources().getColor(R.color.tab_bg_selected));
+				rightTab_bg.setBackgroundColor(getResources().getColor(R.color.tab_bg_unselected));
+				
+				leftTab.setTextColor(getResources().getColor(R.color.tab_text_bg_selected));
+				rightTab.setTextColor(getResources().getColor(R.color.tab_text_bg_unselected));
+				
+				break;
+				
+			case 1:
+				
+				leftTab_bg.setBackgroundColor(getResources().getColor(R.color.tab_bg_unselected));
+				rightTab_bg.setBackgroundColor(getResources().getColor(R.color.tab_bg_selected));
+
+				rightTab.setTextColor(getResources().getColor(R.color.tab_text_bg_selected));
+				leftTab.setTextColor(getResources().getColor(R.color.tab_text_bg_unselected));
+				
+				break;
+			}
+		}
+
+		public void onPageScrolled(int arg0, float arg1, int arg2) {
+		}
+
+		public void onPageScrollStateChanged(int arg0) {
+		}
+	}
+	
+	public Context getAppContext(){
+		return getApplicationContext(); 
+	}
+	   
+
+}

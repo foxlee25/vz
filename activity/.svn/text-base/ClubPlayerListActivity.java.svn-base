@@ -1,0 +1,106 @@
+package com.vizoal.activity;
+
+import java.util.List;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
+import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.Toast;
+
+import com.google.gson.Gson;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.vizoal.adapter.PlayerListAdapter;
+import com.vizoal.common.constant.ServiceEndpointConstant;
+import com.vizoal.domain.Player;
+import com.vizoal.vo.PlayerListResponseVO;
+
+public class ClubPlayerListActivity extends BaseActivity {
+
+	private String TAG = "ClubPlayerListActivity";
+	private float density;
+
+	private PlayerListResponseVO res = null;
+	
+	private String clubId = "";
+	private String clubName = "";
+	
+	private ProgressBar loadingProgressBar;
+	
+	/** Called when the activity is first created. */
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.player_list);
+
+		density = getResources().getDisplayMetrics().density;
+
+		Intent intent=this.getIntent();
+		
+		clubId = intent.getStringExtra("clubId");
+		clubName = intent.getStringExtra("clubName");
+		
+		getSupportActionBar().setTitle(clubName); 
+//		Button page_title_btn = (Button) findViewById(R.id.page_title_btn);
+//		if (page_title_btn != null) {
+//			page_title_btn.setText("Player List");
+//		}
+		
+		getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+		
+		loadingProgressBar = (ProgressBar) findViewById(R.id.loadingProgressBar);
+
+        loadingProgressBar.setVisibility(View.VISIBLE);
+
+		String url = ServiceEndpointConstant.PLAYER_LIST_BY_CLUB_ID+clubId;
+		AsyncHttpClient client = new AsyncHttpClient();
+		client.get(url, new AsyncHttpResponseHandler() {
+			@Override
+			public void onSuccess(String response) {
+				loadingProgressBar.setVisibility(View.INVISIBLE);
+				
+				Gson gson = new Gson();
+				res = gson.fromJson(
+						response, PlayerListResponseVO.class);
+				filloutData();
+			}
+
+			@Override
+			public void onFailure(java.lang.Throwable t) {
+				String errorMSG = "Failed to get home page players from server.";
+				Log.e(TAG, errorMSG + " Error: " + t.getMessage(), t);
+				Toast.makeText(getBaseContext(), errorMSG, Toast.LENGTH_SHORT)
+						.show();
+			}
+		});
+	}
+
+	private void filloutData() {
+		if (res != null && res.getPlayerList()!=null) {
+			List<Player> playerList = res.getPlayerList();
+			ListView list = (ListView) findViewById(R.id.ListView01);
+
+			PlayerListAdapter adapter=new PlayerListAdapter(this, playerList, list, 1, density);
+			list.setAdapter(adapter);
+			list.setOnItemClickListener(new OnItemClickListener() {
+				@Override
+				public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+						long arg3) {
+					Intent intent = new Intent(arg0.getContext(),
+							ProfileActivity.class);
+					Player innerPlayer = res.getPlayerList().get(arg2);
+					if(innerPlayer!=null){
+						intent.putExtra("playerId",""+innerPlayer.getPlayerId());  
+						intent.putExtra("nationality_fmid",""+innerPlayer.getNationDisplay_fmid());  
+					}
+					startActivity(intent);
+				}
+			});
+		}
+	}
+}

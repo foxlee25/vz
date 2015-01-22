@@ -1,0 +1,264 @@
+//package com.vizoal.activity;
+//
+//import java.text.SimpleDateFormat;
+//import java.util.Calendar;
+//import java.util.Date;
+//
+//import android.app.Activity;
+//import android.app.DatePickerDialog;
+//import android.app.ProgressDialog;
+//import android.content.Intent;
+//import android.graphics.Color;
+//import android.os.AsyncTask;
+//import android.os.Bundle;
+//import android.text.SpannableString;
+//import android.text.Spanned;
+//import android.text.style.ForegroundColorSpan;
+//import android.view.View;
+//import android.view.WindowManager;
+//import android.view.View.OnClickListener;
+//import android.widget.Button;
+//import android.widget.DatePicker;
+//import android.widget.EditText;
+//import android.widget.RadioButton;
+//import android.widget.RadioGroup;
+//import android.widget.TextView;
+//import android.widget.Toast;
+//
+//import com.vizoal.common.constant.ServiceEndpointConstant;
+//import com.vizoal.domain.ClientUser;
+//import com.vizoal.domain.Users;
+//import com.vizoal.service.UserDBHander;
+//import com.vizoal.util.EmailValidator;
+//import com.vizoal.util.Hash;
+//
+//public class RegisterActivity extends Activity {
+//
+//	private EditText emailEditText, passwordEditText, passwordConfirmEditText,
+//			fullnameEditText;
+//
+//	private RadioGroup genderRadio;
+//
+//	private TextView errorTextView;
+//	private Button birthdayButton;
+//
+//	private String email, password, passwordConfirm, fullname, gender;
+//
+//	private String errorMsg = "";
+//
+//	UserDBHander dbHander = new UserDBHander(RegisterActivity.this);
+//
+//	private ClientUser clientUser = null;
+//
+//	ProgressDialog pd = null;
+//	
+//	private SimpleDateFormat df = new SimpleDateFormat( "yyyy-MM-dd" );
+//	
+//	boolean birthdayFlag = false;
+//
+//	@Override
+//	public void onCreate(Bundle savedInstanceState) {
+//		super.onCreate(savedInstanceState);
+//
+//		setContentView(R.layout.register);
+//
+//		getWindow().setSoftInputMode(
+//				WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+//
+//		init();
+//
+//		setTermsAndConditons();
+//
+//		registerBtnClick();
+//		
+//		birthdayClick();
+//	}
+//	
+//	
+//	private void birthdayClick(){
+//		birthdayButton.setOnClickListener(new OnClickListener() {
+//			@Override
+//			public void onClick(View v) {
+//				DatePickerDialog datePickerDialog = new DatePickerDialog(RegisterActivity.this ,
+//						listener ,
+//						cal.get(Calendar. YEAR ),
+//						cal.get(Calendar. MONTH ),
+//						cal.get(Calendar. DAY_OF_MONTH )
+//						);
+//				datePickerDialog.setTitle("Birthday");
+//				datePickerDialog.show();
+//				
+//			}
+//		});
+//	}
+//
+//	private void init() {
+//		emailEditText = (EditText) findViewById(R.id.email);
+//		passwordEditText = (EditText) findViewById(R.id.password);
+//		passwordConfirmEditText = (EditText) findViewById(R.id.passwordConfirm);
+//		fullnameEditText = (EditText) findViewById(R.id.fullname);
+//		genderRadio = (RadioGroup) findViewById(R.id.gender);
+//		errorTextView = (TextView) findViewById(R.id.error);
+//		birthdayButton = (Button) findViewById(R.id.birthday);
+//	}
+//
+//	private void registerBtnClick() {
+//		Button registerBtn = (Button) findViewById(R.id.btnRegister);
+//
+//		registerBtn.setOnClickListener(new OnClickListener() {
+//			@Override
+//			public void onClick(View v) {
+//				email = emailEditText.getText().toString();
+//				password = passwordEditText.getText().toString();
+//				passwordConfirm = passwordConfirmEditText.getText().toString();
+//				fullname = fullnameEditText.getText().toString();
+//
+//				errorTextView.setText("");
+//
+//				int selectedId = genderRadio.getCheckedRadioButtonId();
+//				RadioButton radioGender = (RadioButton) findViewById(selectedId);
+//				gender = radioGender.getText().toString();
+//
+//				if (validateForm()) {
+//					clientUser = new ClientUser();
+//					clientUser.setRegister_from("vizoal");
+//					clientUser.setVizoal_user_name(fullname);
+//
+//					Users user = new Users();
+//					user.setEmail(email);
+//					user.setUser_id(email);
+//					user.setRegister_from("vizoal");
+//					user.setVizoal_user_name(fullname);
+//					user.setVizoal_password(Hash.hash(password));
+//					
+//					if(birthdayFlag){
+//						user.setBirth_day(df.format(cal.getTime()));
+//					}
+//					showProgressDialog();
+//					new CreateUserTask().execute(user);
+//				} else {
+//					errorTextView.setText(errorMsg);
+//				}
+//			}
+//		});
+//	}
+//
+//	private boolean validateForm() {
+//		boolean flag = true;
+//		errorMsg = "";
+//		if (email == null || "".equals(email)) {
+//			errorMsg = errorMsg + " Email cannot be null;";
+//			flag = false;
+//		} else {
+//			if (!EmailValidator.validate(email)) {
+//				errorMsg = errorMsg + " Wrong email format;";
+//				flag = false;
+//			}
+//		}
+//		if (password == null || "".equals(password)) {
+//			errorMsg = errorMsg + " password cannot be null;";
+//		} else {
+//			if (password.length() < 6) {
+//				errorMsg = errorMsg
+//						+ " The length of password has to be more than 6;";
+//			}
+//		}
+//		if (password != null && !password.equals(passwordConfirm)) {
+//			errorMsg = errorMsg
+//					+ " Password and password confirm must be equal;";
+//			flag = false;
+//		}
+//		if (fullname == null || "".equals(fullname)) {
+//			errorMsg = errorMsg + " Fullname cannot be null;";
+//			flag = false;
+//		}
+//		return flag;
+//
+//	}
+//
+//	private void setTermsAndConditons() {
+//		TextView termsAndConditions = (TextView) findViewById(R.id.termsAndConditions);
+//		int colorCode = Color.parseColor("#4682B4");
+//		SpannableString ss = new SpannableString(
+//				"By signing in, I accept Vizoal's Terms and Conditions and Privicy Policy");
+//		ss.setSpan(new ForegroundColorSpan(colorCode), 33, 53,
+//				Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+//		ss.setSpan(new ForegroundColorSpan(colorCode), 58, 72,
+//				Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+//		termsAndConditions.setText(ss);
+//	}
+//
+//	private class CreateUserTask extends AsyncTask<Users, String, String> {
+//		@Override
+//		protected void onPostExecute(String result) {
+//			System.out.println("create user response: " + result);
+//			Long id = null;
+//			if (result != null) {
+//				result = result.trim();
+//			}
+//			try {
+//				id = Long.valueOf(result);
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//				Toast.makeText(RegisterActivity.this, e.getMessage(),
+//						Toast.LENGTH_SHORT).show();
+//			}
+//			if (id != null) {
+//				if (id < 0) {
+//					errorMsg = "The email has been used!";
+//					errorTextView.setText(errorMsg);
+//				} else {
+//					clientUser.setVizoal_user_id("" + id);
+//					dbHander.addUser(clientUser);
+//					redirectToHomePage();
+//				}
+//			}
+//			dismissProgressDialog();
+//		}
+//
+//		@Override
+//		protected String doInBackground(Users... params) {
+//			return LoginActivity.sendCommentJson(params[0],
+//					ServiceEndpointConstant.CREATE_USER_ENDPOINT);
+//		}
+//	}
+//	
+//	
+//
+//	private void showProgressDialog() {
+//		pd = new ProgressDialog(this);
+//		pd.setMessage("Processing...");
+//		pd.setCancelable(false);
+//		pd.setIndeterminate(true);
+//		pd.show();
+//	}
+//
+//	private void dismissProgressDialog() {
+//		if (pd != null) {
+//			pd.dismiss();
+//		}
+//	}
+//
+//	private void redirectToHomePage() {
+//		Intent i = new Intent(getApplicationContext(), HomePageActivity.class);
+//		startActivity(i);
+//	}
+//	
+//	Calendar cal = Calendar.getInstance();
+//	
+//	private DatePickerDialog.OnDateSetListener listener = new DatePickerDialog.OnDateSetListener(){  //
+//		@Override
+//		public void onDateSet(DatePicker arg0, int arg1, int arg2, int arg3) {
+//		cal.set(Calendar.YEAR , arg1);
+//		cal.set(Calendar.MONTH , arg2);
+//		cal.set(Calendar.DAY_OF_MONTH , arg3);
+//		updateDate();
+//		}
+//		};
+//		
+//	private void updateDate(){
+//		birthdayFlag = true;
+//		birthdayButton.setText(df.format(cal.getTime()));
+//	}
+//
+//}
