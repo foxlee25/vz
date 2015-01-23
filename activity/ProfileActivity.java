@@ -1,4 +1,4 @@
-package com.vizoal.activity;
+package com.xxx.activity;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -53,23 +53,23 @@ import com.google.gson.Gson;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
-import com.vizoal.common.constant.CommonConstant;
-import com.vizoal.common.constant.ServiceEndpointConstant;
-import com.vizoal.domain.Player;
-import com.vizoal.domain.PlayerComment;
-import com.vizoal.domain.PlayerCommentListAll;
-import com.vizoal.domain.PlayerNationality;
-import com.vizoal.domain.PlayerPosition;
-import com.vizoal.domain.PlayerStatistics;
-import com.vizoal.util.DensityUtils;
-import com.vizoal.util.DisplayImageOptionUtil;
-import com.vizoal.util.PlayerPositonCalculator;
-import com.vizoal.util.Util;
-import com.vizoal.view.PullToRefreshListView;
-import com.vizoal.vo.CommentListAllResponseVO;
-import com.vizoal.vo.CommentListResponseVO;
-import com.vizoal.vo.PlayerResponseVO;
-import com.vizoal.vo.PlayerStatisticsVO;
+import com.xxx.common.constant.CommonConstant;
+import com.xxx.common.constant.ServiceEndpointConstant;
+import com.xxx.domain.Player;
+import com.xxx.domain.PlayerComment;
+import com.xxx.domain.PlayerCommentListAll;
+import com.xxx.domain.PlayerNationality;
+import com.xxx.domain.PlayerPosition;
+import com.xxx.domain.PlayerStatistics;
+import com.xxx.util.DensityUtils;
+import com.xxx.util.DisplayImageOptionUtil;
+import com.xxx.util.PlayerPositonCalculator;
+import com.xxx.util.Util;
+import com.xxx.view.PullToRefreshListView;
+import com.xxx.vo.CommentListAllResponseVO;
+import com.xxx.vo.CommentListResponseVO;
+import com.xxx.vo.PlayerResponseVO;
+import com.xxx.vo.PlayerStatisticsVO;
 
 public class ProfileActivity extends BaseActivity implements OnScrollListener{
 
@@ -318,7 +318,7 @@ private void loadNewPlayerComment(){
     		        
 		        list.onRefreshComplete();
 
-		        list.setOnRefreshListener(new com.vizoal.view.PullToRefreshListView.OnRefreshListener() {
+		        list.setOnRefreshListener(new com.xxx.view.PullToRefreshListView.OnRefreshListener() {
 					@Override
 					public void onRefresh() {
 						loadNewPlayerComment();
@@ -822,7 +822,7 @@ private void loadNewPlayerComment(){
 				}
 				
 				
-				prefs = context.getSharedPreferences("com.vizoal", Context.MODE_PRIVATE);
+				prefs = context.getSharedPreferences("com.xxx", Context.MODE_PRIVATE);
 				savedUserName = prefs.getString(CommonConstant.USER_NAME,"");
 
 				final EditText edittext = (EditText) findViewById(R.id.comment_edit_box);
@@ -1028,14 +1028,14 @@ private void loadNewPlayerComment(){
 //            		final ClientUser inneruser = dbHander.findUser();
 //            		if(inneruser!=null){
 //            			signed_in = true;
-//            			String url = ServiceEndpointConstant.VIZOAL_BASE_URL +"/vizoal/services/fav_player/add/"+inneruser.getVizoal_user_id()+"/"+playerId;
+//            			String url = ServiceEndpointConstant.xxx_BASE_URL +"/xxx/services/fav_player/add/"+inneruser.getxxx_user_id()+"/"+playerId;
 //                		AsyncHttpClient client = new AsyncHttpClient();
 //                		client.post(url, new AsyncHttpResponseHandler() {
 //                			@Override
 //                			public void onSuccess(String response) {
 //                				if(response!=null && Integer.valueOf(response)>0){
 //                					Toast.makeText(getBaseContext(), "Add to Favorites successfully!", Toast.LENGTH_SHORT).show();
-//                					redirectToFavPage(inneruser.getVizoal_user_id());
+//                					redirectToFavPage(inneruser.getxxx_user_id());
 //                				}else{
 //                					Toast.makeText(getBaseContext(), "This player have been added to your favorite before!", Toast.LENGTH_SHORT).show();
 //                				}
